@@ -2,18 +2,18 @@
 #
 # Multi-stage build for Muninn.
 #
-# All binary scanners land in a single 'tools' stage, which makes the download
-# logic easy to audit and cache efficiently.  Python tools get their own stage
-# so the heavy site-packages layer is isolated.
+# Libc strategy: the final image is Debian-based (glibc) rather than Alpine
+# (musl).  This is deliberate — semgrep, checkov, and zizmor are installed via
+# pip and ship compiled, glibc-linked components (semgrep-core, zizmor's Rust
+# binary) that do not run on musl.  The remaining scanners (gitleaks, actionlint,
+# poutine, osv-scanner, trivy) are static Go binaries that run on any libc, so we
+# download them in a lightweight Alpine stage and copy them in.
 #
-# Two download helpers are provided:
-#   gh_ver  — resolves the latest version via HTTP redirect (no API quota used).
-#             Use when the asset filename convention is stable and well-known.
-#   gh_asset — resolves the exact download URL via the GitHub releases API JSON.
-#              Use when the naming convention is project-specific (e.g. cargo-dist
-#              includes the version in the filename; goreleaser arch naming varies).
+# Version detection uses gh_ver, which resolves the latest tag via the GitHub
+# releases HTTP redirect (no JSON API call), so we never touch the 60 req/hour
+# unauthenticated API rate limit.
 
-# ── tools: download all binary scanners ──────────────────────────────────────
+# ── tools: download static Go scanner binaries ───────────────────────────────
 FROM alpine:3.19 AS tools
 
 RUN apk add --no-cache curl tar
@@ -30,23 +30,6 @@ SCRIPT
 chmod +x /usr/local/bin/gh_ver
 EOF
 
-# gh_asset: find the download URL for a release asset by grepping the releases
-# JSON for a filename pattern.  Uses one API call per invocation but correctly
-# handles any naming convention (goreleaser, cargo-dist, bespoke scripts, etc.).
-# Usage: gh_asset OWNER/REPO FILENAME_PATTERN  →  download URL
-RUN <<'EOF'
-cat > /usr/local/bin/gh_asset << 'SCRIPT'
-#!/bin/sh
-set -e
-curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
-  | grep "browser_download_url" \
-  | grep "$2" \
-  | head -1 \
-  | sed 's/.*"browser_download_url": "\([^"]*\)".*/\1/'
-SCRIPT
-chmod +x /usr/local/bin/gh_asset
-EOF
-
 # gitleaks — secrets detection
 # Goreleaser asset: gitleaks_VERSION_linux_{x64|arm64}.tar.gz
 RUN ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/') && \
@@ -54,13 +37,6 @@ RUN ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/') && \
     curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_${ARCH}.tar.gz" \
          | tar -xz -C /usr/local/bin gitleaks && \
     chmod +x /usr/local/bin/gitleaks
-
-# zizmor — CI/CD pipeline security
-# cargo-dist asset: zizmor-VERSION-TARGET.tar.gz  (version is part of the filename)
-RUN ARCH=$(uname -m | sed 's/x86_64/x86_64-unknown-linux-musl/;s/aarch64/aarch64-unknown-linux-musl/') && \
-    DL=$(gh_asset woodruffw/zizmor "${ARCH}.tar.gz") && \
-    curl -fsSL "${DL}" | tar -xz -C /usr/local/bin zizmor && \
-    chmod +x /usr/local/bin/zizmor
 
 # actionlint — GitHub Actions linter
 # Goreleaser asset: actionlint_VERSION_linux_{amd64|arm64}.tar.gz
@@ -71,10 +47,11 @@ RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
     chmod +x /usr/local/bin/actionlint
 
 # poutine — supply chain pipeline risks
-# Use gh_asset to avoid guessing whether the project uses amd64 or x86_64 naming.
-RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/') && \
-    DL=$(gh_asset boostsecurityio/poutine "Linux_${ARCH}.tar.gz") && \
-    curl -fsSL "${DL}" | tar -xz -C /usr/local/bin poutine && \
+# Goreleaser asset: poutine_Linux_{x86_64|arm64}.tar.gz (raw uname -m for amd64)
+RUN ARCH=$(uname -m | sed 's/aarch64/arm64/') && \
+    VER=$(gh_ver boostsecurityio/poutine) && \
+    curl -fsSL "https://github.com/boostsecurityio/poutine/releases/download/v${VER}/poutine_Linux_${ARCH}.tar.gz" \
+         | tar -xz -C /usr/local/bin poutine && \
     chmod +x /usr/local/bin/poutine
 
 # osv-scanner — dependency CVEs (single static binary, no tarball)
@@ -85,16 +62,11 @@ RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
          -o /usr/local/bin/osv-scanner && \
     chmod +x /usr/local/bin/osv-scanner
 
-# trivy — container / filesystem scanner (official install script)
+# trivy — container / filesystem scanner (official install script, static binary)
 RUN curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
          | sh -s -- -b /usr/local/bin
 
-# ── python-tools: semgrep + checkov ──────────────────────────────────────────
-FROM python:3.12-slim AS python-tools
-RUN pip install --no-cache-dir semgrep checkov && \
-    semgrep --version && checkov --version
-
-# ── builder: compile Muninn ───────────────────────────────────────────────────
+# ── builder: compile Muninn (static, runs on any libc) ───────────────────────
 FROM golang:1.22-alpine AS builder
 WORKDIR /src
 COPY go.mod ./
@@ -102,25 +74,26 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /muninn .
 
-# ── final image ───────────────────────────────────────────────────────────────
-FROM alpine:3.19
+# ── final image (Debian/glibc) ───────────────────────────────────────────────
+FROM python:3.12-slim
 
-# git: needed by gitleaks for commit history scanning
-# python3: needed to run semgrep and checkov
-# ca-certificates: needed for HTTPS calls by scanners
-RUN apk add --no-cache git python3 ca-certificates
+# git: gitleaks needs it for commit-history scanning
+# ca-certificates: HTTPS calls made by the scanners
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
+# Python/Rust scanners installed natively so their compiled parts match the
+# image's glibc.  zizmor ships a Rust binary wheel on PyPI.
+RUN pip install --no-cache-dir semgrep checkov zizmor && \
+    semgrep --version && checkov --version && zizmor --version
+
+# Static Go scanner binaries
 COPY --from=tools /usr/local/bin/gitleaks    /usr/local/bin/gitleaks
-COPY --from=tools /usr/local/bin/zizmor      /usr/local/bin/zizmor
 COPY --from=tools /usr/local/bin/actionlint  /usr/local/bin/actionlint
 COPY --from=tools /usr/local/bin/poutine     /usr/local/bin/poutine
 COPY --from=tools /usr/local/bin/osv-scanner /usr/local/bin/osv-scanner
 COPY --from=tools /usr/local/bin/trivy       /usr/local/bin/trivy
-
-COPY --from=python-tools /usr/local/bin/semgrep  /usr/local/bin/semgrep
-COPY --from=python-tools /usr/local/bin/checkov  /usr/local/bin/checkov
-COPY --from=python-tools /usr/local/lib/python3.12/site-packages \
-                         /usr/local/lib/python3.12/site-packages
 
 COPY --from=builder /muninn /usr/local/bin/muninn
 
