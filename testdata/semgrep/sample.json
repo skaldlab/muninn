@@ -1,45 +1,86 @@
 {
-  "version": "1.1.0",
   "results": [
     {
-      "check_id": "python.lang.security.audit.dangerous-system-call.dangerous-system-call",
-      "path": "src/runner.py",
+      "check_id": "python.lang.security.audit.exec-use.exec-use",
+      "path": "src/app.py",
       "start": {
-        "line": 42,
-        "col": 5,
-        "offset": 1024
+        "line": 10,
+        "col": 1,
+        "offset": 245
       },
       "end": {
-        "line": 42,
-        "col": 30,
-        "offset": 1049
+        "line": 10,
+        "col": 20,
+        "offset": 264
       },
       "extra": {
-        "message": "Found an `os.system` call. This is dangerous because `os.system` passes the command to the shell and can lead to shell injection vulnerabilities. Use the `subprocess` module instead.",
-        "metadata": {
-          "cwe": ["CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"],
-          "owasp": ["A03:2021 - Injection"],
-          "references": ["https://owasp.org/Top10/A03_2021-Injection/"],
-          "category": "security",
-          "technology": ["python"],
-          "confidence": "HIGH",
-          "likelihood": "HIGH",
-          "impact": "HIGH",
-          "subcategory": ["audit"]
-        },
+        "message": "Use of exec() is dangerous. It can lead to arbitrary code execution if user input reaches it.",
         "severity": "ERROR",
-        "fingerprint": "semgrep:python.lang.security.audit.dangerous-system-call:src/runner.py:42"
+        "fingerprint": "a1b2c3d4e5f60001",
+        "metadata": {
+          "confidence": "HIGH",
+          "impact": "HIGH",
+          "likelihood": "MEDIUM",
+          "cwe": ["CWE-78: Improper Neutralization of Special Elements"],
+          "references": ["https://semgrep.dev/r/python.lang.security.audit.exec-use"]
+        }
+      }
+    },
+    {
+      "check_id": "python.lang.security.audit.subprocess-shell-true.subprocess-shell-true",
+      "path": "src/utils.py",
+      "start": {
+        "line": 25,
+        "col": 9,
+        "offset": 612
+      },
+      "end": {
+        "line": 25,
+        "col": 45,
+        "offset": 648
+      },
+      "extra": {
+        "message": "subprocess call with shell=True is a security risk; prefer subprocess.run with a list of arguments.",
+        "severity": "ERROR",
+        "fingerprint": "",
+        "metadata": {
+          "confidence": "MEDIUM",
+          "impact": "HIGH",
+          "likelihood": "LOW",
+          "cwe": ["CWE-78: Improper Neutralization of Special Elements"],
+          "references": []
+        }
+      }
+    },
+    {
+      "check_id": "python.lang.maintainability.useless-eqeq.useless-eqeq",
+      "path": "src/models.py",
+      "start": {
+        "line": 7,
+        "col": 5,
+        "offset": 120
+      },
+      "end": {
+        "line": 7,
+        "col": 22,
+        "offset": 137
+      },
+      "extra": {
+        "message": "This expression is always True because it compares a value to itself. Use a linter to catch these automatically.",
+        "severity": "WARNING",
+        "fingerprint": "",
+        "metadata": {
+          "confidence": "HIGH",
+          "impact": "LOW",
+          "likelihood": "LOW",
+          "cwe": [],
+          "references": []
+        }
       }
     }
   ],
   "errors": [],
   "paths": {
-    "scanned": ["src/runner.py"],
-    "_comment": "truncated for brevity"
-  },
-  "stats": {
-    "total_time": 2.345,
-    "files_scanned": 1,
-    "total_findings": 1
+    "scanned": ["src/app.py", "src/utils.py", "src/models.py"]
   }
 }
