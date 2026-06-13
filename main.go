@@ -129,6 +129,19 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: poutine not found, skipping")
 	}
 
+	sg := scanner.NewSemgrep()
+	if sg.IsAvailable() {
+		sgFindings, err := sg.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: semgrep: %v\n", err)
+		} else {
+			findings = append(findings, sgFindings...)
+			fmt.Printf("muninn: semgrep: %d finding(s)\n", len(sgFindings))
+		}
+	} else {
+		fmt.Println("muninn: semgrep not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {
