@@ -1,0 +1,51 @@
+name: 'Muninn Security Scanner'
+description: 'All-in-one security scanner for your codebase and CI/CD pipelines by Skaldlab'
+author: 'Skaldlab'
+
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  token:
+    description: 'GitHub token for posting PR comments and uploading SARIF results'
+    required: true
+    default: ${{ github.token }}
+  fail-on:
+    description: 'Minimum severity to fail the check (critical/high/medium/low)'
+    required: false
+    default: 'critical'
+  config:
+    description: 'Path to muninn.yml config file relative to repository root'
+    required: false
+    default: 'muninn.yml'
+  output:
+    description: 'Output formats to generate (comma-separated: json,sarif,comment)'
+    required: false
+    default: 'json,sarif,comment'
+  target:
+    description: 'Path to repository root to scan (default: repo root)'
+    required: false
+    default: '.'
+
+outputs:
+  findings-count:
+    description: 'Total number of findings across all scanners'
+  critical-count:
+    description: 'Number of critical-severity findings'
+  high-count:
+    description: 'Number of high-severity findings'
+  sarif-file:
+    description: 'Path to the generated SARIF file'
+  json-file:
+    description: 'Path to the generated JSON report'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
+  env:
+    GITHUB_TOKEN: ${{ inputs.token }}
+    FAIL_ON: ${{ inputs.fail-on }}
+    CONFIG_PATH: ${{ inputs.config }}
+    OUTPUT_FORMATS: ${{ inputs.output }}
+    SCAN_TARGET: ${{ inputs.target }}
