@@ -84,19 +84,20 @@ func Load(path string) (*Config, error) {
 // Defaults returns a Config pre-populated with the recommended defaults
 // from the muninn.yml specification. Callers use this when no config file is
 // present rather than operating with a zero-value Config.
-func Defaults() *Config {	enabled := ScannerConfig{Enabled: true}
+func Defaults() *Config {
+	enabled := ScannerConfig{Enabled: true}
 	return &Config{
 		Version: 1,
 		FailOn:  "critical",
 		Scanners: map[string]ScannerConfig{
-			"gitleaks":   enabled,
-			"semgrep":    {Enabled: true, Rulesets: []string{"p/security-audit", "p/secrets"}},
-			"zizmor":     enabled,
-			"actionlint": enabled,
-			"poutine":    enabled,
-			"trivy":      {Enabled: true, Severity: []string{"CRITICAL", "HIGH"}, IgnoreUnfixed: true},
+			"gitleaks":    enabled,
+			"semgrep":     {Enabled: true, Rulesets: []string{"p/security-audit", "p/secrets"}},
+			"zizmor":      enabled,
+			"actionlint":  enabled,
+			"poutine":     enabled,
+			"trivy":       {Enabled: true, Severity: []string{"CRITICAL", "HIGH"}, IgnoreUnfixed: true},
 			"osv-scanner": enabled,
-			"checkov":    enabled,
+			"checkov":     enabled,
 		},
 	}
 }
