@@ -11,6 +11,7 @@ import (
 
 	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
+	"github.com/skaldlab/muninn/internal/scanner"
 )
 
 // chdirTemp changes the working directory to a fresh temp dir for the duration
@@ -184,8 +185,8 @@ func TestScanOrchestrator_MultipleFormats(t *testing.T) {
 }
 
 func TestScanOrchestrator_FailOnThreshold(t *testing.T) {
-	// fail-on evaluation is not yet implemented (TODO in scan()); scan() returns
-	// nil regardless of findings. This test documents current behaviour.
+	// With no scanners available there are zero findings, so the fail-on check
+	// passes and scan() returns nil even at a "high" threshold.
 	dir := chdirTemp(t)
 	cfg := config.Defaults()
 	cfg.FailOn = "high"
@@ -367,5 +368,119 @@ func TestRun_WithConfigFlag(t *testing.T) {
 	setArgs(t, "--config", filepath.Join(dir, "muninn.yml"), "--target", dir, "--output", "json")
 	if code := run(); code != 0 {
 		t.Errorf("run() = %d, want 0", code)
+	}
+}
+
+// ── severityRank ──────────────────────────────────────────────────────────────
+
+func TestSeverityRank(t *testing.T) {
+	// Ranks must be strictly ordered: critical > high > medium > low > info.
+	order := []normalizer.Severity{
+		normalizer.SeverityInfo,
+		normalizer.SeverityLow,
+		normalizer.SeverityMedium,
+		normalizer.SeverityHigh,
+		normalizer.SeverityCritical,
+	}
+	for i := 1; i < len(order); i++ {
+		if severityRank(order[i]) <= severityRank(order[i-1]) {
+			t.Errorf("severityRank(%q) should be greater than severityRank(%q)", order[i], order[i-1])
+		}
+	}
+	// An unknown severity ranks below info.
+	if severityRank(normalizer.Severity("bogus")) != 0 {
+		t.Errorf("severityRank(bogus) = %d, want 0", severityRank(normalizer.Severity("bogus")))
+	}
+}
+
+// ── checkFailOn ───────────────────────────────────────────────────────────────
+
+func TestCheckFailOn_AboveThreshold(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "a", Severity: normalizer.SeverityCritical, Fingerprint: "a"},
+	}
+	if err := checkFailOn("high", findings); err == nil {
+		t.Fatal("checkFailOn expected error when a finding is above threshold, got nil")
+	}
+}
+
+func TestCheckFailOn_AtThreshold(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "a", Severity: normalizer.SeverityHigh, Fingerprint: "a"},
+	}
+	if err := checkFailOn("high", findings); err == nil {
+		t.Fatal("checkFailOn expected error when a finding equals threshold, got nil")
+	}
+}
+
+func TestCheckFailOn_BelowThreshold(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "a", Severity: normalizer.SeverityLow, Fingerprint: "a"},
+		{ID: "b", Severity: normalizer.SeverityMedium, Fingerprint: "b"},
+	}
+	if err := checkFailOn("high", findings); err != nil {
+		t.Fatalf("checkFailOn unexpected error for sub-threshold findings: %v", err)
+	}
+}
+
+func TestCheckFailOn_NoThreshold(t *testing.T) {
+	// An empty threshold disables the check regardless of severity.
+	findings := []normalizer.Finding{
+		{ID: "a", Severity: normalizer.SeverityCritical, Fingerprint: "a"},
+	}
+	if err := checkFailOn("", findings); err != nil {
+		t.Fatalf("checkFailOn with empty threshold should be nil, got: %v", err)
+	}
+}
+
+func TestCheckFailOn_SuppressedIgnored(t *testing.T) {
+	// Suppressed findings must not count toward the fail-on threshold.
+	findings := []normalizer.Finding{
+		{ID: "a", Severity: normalizer.SeverityCritical, Suppressed: true, Fingerprint: "a"},
+	}
+	if err := checkFailOn("critical", findings); err != nil {
+		t.Fatalf("checkFailOn should ignore suppressed findings, got: %v", err)
+	}
+}
+
+// ── activeScanners ────────────────────────────────────────────────────────────
+
+func TestActiveScanners_Count(t *testing.T) {
+	scanners := activeScanners()
+	if len(scanners) != 8 {
+		t.Fatalf("activeScanners() returned %d scanners, want 8", len(scanners))
+	}
+	// Every scanner must report a non-empty name.
+	for i, sc := range scanners {
+		if sc.Name() == "" {
+			t.Errorf("scanner at index %d has empty Name()", i)
+		}
+	}
+}
+
+// ── runScanner ────────────────────────────────────────────────────────────────
+
+func TestRunScanner_DisabledInConfig(t *testing.T) {
+	// A scanner marked disabled in config is skipped even when its fake binary
+	// is on PATH; runScanner must return nil findings without executing it.
+	addFakeScannerToPath(t, "poutine", `{"findings":[{"rule":{"id":"x","severity":"critical"}}]}`, 0)
+	cfg := config.Defaults()
+	cfg.Scanners["poutine"] = config.ScannerConfig{Enabled: false}
+
+	got := runScanner(context.Background(), scanner.NewPoutine(), t.TempDir(), cfg)
+	if got != nil {
+		t.Errorf("runScanner for disabled scanner = %v, want nil", got)
+	}
+}
+
+func TestRunScanner_EnabledRuns(t *testing.T) {
+	// A scanner enabled in config with an available fake binary runs and its
+	// findings are returned.
+	addFakeScannerToPath(t, "poutine", `{"findings":[]}`, 0)
+	cfg := config.Defaults()
+
+	got := runScanner(context.Background(), scanner.NewPoutine(), t.TempDir(), cfg)
+	if got != nil && len(got) != 0 {
+		t.Errorf("runScanner = %v, want empty", got)
 	}
 }

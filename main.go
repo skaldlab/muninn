@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 	"strings"
@@ -29,7 +30,13 @@ import (
 
 	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
+	"github.com/skaldlab/muninn/internal/reporter"
 	"github.com/skaldlab/muninn/internal/scanner"
+)
+
+const (
+	sarifOutputFile = "muninn.sarif"
+	jsonOutputFile  = "muninn.json"
 )
 
 func main() {
@@ -71,179 +78,165 @@ func run() int {
 	return 0
 }
 
-// scan orchestrates all enabled scanners against target and writes the report.
+// scan orchestrates all enabled scanners against target, writes the requested
+// report formats, and enforces the fail-on threshold.
 func scan(ctx context.Context, cfg *config.Config, target, outputFormats string) error {
 	fmt.Printf("muninn: scanning %s (formats=%s, fail-on=%s)\n", target, outputFormats, cfg.FailOn)
 
 	var findings []normalizer.Finding
-
-	gl := scanner.NewGitleaks()
-	if gl.IsAvailable() {
-		glFindings, err := gl.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: gitleaks: %v\n", err)
-		} else {
-			findings = append(findings, glFindings...)
-			fmt.Printf("muninn: gitleaks: %d finding(s)\n", len(glFindings))
-		}
-	} else {
-		fmt.Println("muninn: gitleaks not found, skipping")
+	for _, sc := range activeScanners() {
+		findings = append(findings, runScanner(ctx, sc, target, cfg)...)
 	}
 
-	zz := scanner.NewZizmor()
-	if zz.IsAvailable() {
-		zzFindings, err := zz.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: zizmor: %v\n", err)
-		} else {
-			findings = append(findings, zzFindings...)
-			fmt.Printf("muninn: zizmor: %d finding(s)\n", len(zzFindings))
-		}
-	} else {
-		fmt.Println("muninn: zizmor not found, skipping")
-	}
-
-	al := scanner.NewActionlint()
-	if al.IsAvailable() {
-		alFindings, err := al.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: actionlint: %v\n", err)
-		} else {
-			findings = append(findings, alFindings...)
-			fmt.Printf("muninn: actionlint: %d finding(s)\n", len(alFindings))
-		}
-	} else {
-		fmt.Println("muninn: actionlint not found, skipping")
-	}
-
-	po := scanner.NewPoutine()
-	if po.IsAvailable() {
-		poFindings, err := po.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: poutine: %v\n", err)
-		} else {
-			findings = append(findings, poFindings...)
-			fmt.Printf("muninn: poutine: %d finding(s)\n", len(poFindings))
-		}
-	} else {
-		fmt.Println("muninn: poutine not found, skipping")
-	}
-
-	sg := scanner.NewSemgrep()
-	if sg.IsAvailable() {
-		sgFindings, err := sg.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: semgrep: %v\n", err)
-		} else {
-			findings = append(findings, sgFindings...)
-			fmt.Printf("muninn: semgrep: %d finding(s)\n", len(sgFindings))
-		}
-	} else {
-		fmt.Println("muninn: semgrep not found, skipping")
-	}
-
-	osv := scanner.NewOSVScanner()
-	if osv.IsAvailable() {
-		osvFindings, err := osv.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: osv-scanner: %v\n", err)
-		} else {
-			findings = append(findings, osvFindings...)
-			fmt.Printf("muninn: osv-scanner: %d finding(s)\n", len(osvFindings))
-		}
-	} else {
-		fmt.Println("muninn: osv-scanner not found, skipping")
-	}
-
-	tv := scanner.NewTrivy()
-	if tv.IsAvailable() {
-		tvFindings, err := tv.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: trivy: %v\n", err)
-		} else {
-			findings = append(findings, tvFindings...)
-			fmt.Printf("muninn: trivy: %d finding(s)\n", len(tvFindings))
-		}
-	} else {
-		fmt.Println("muninn: trivy not found, skipping")
-	}
-
-	ck := scanner.NewCheckov()
-	if ck.IsAvailable() {
-		ckFindings, err := ck.Run(ctx, target)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "muninn: checkov: %v\n", err)
-		} else {
-			findings = append(findings, ckFindings...)
-			fmt.Printf("muninn: checkov: %d finding(s)\n", len(ckFindings))
-		}
-	} else {
-		fmt.Println("muninn: checkov not found, skipping")
-	}
-
-	formats := splitFormats(outputFormats)
-	for _, fmt_ := range formats {
-		switch fmt_ {
-		case "sarif":
-			if err := writeSARIF("muninn.sarif", findings); err != nil {
-				return fmt.Errorf("writing SARIF output: %w", err)
-			}
-			fmt.Println("muninn: wrote muninn.sarif")
-		case "json":
-			if err := writeJSON("muninn.json", findings); err != nil {
-				return fmt.Errorf("writing JSON output: %w", err)
-			}
-			fmt.Println("muninn: wrote muninn.json")
-		case "comment":
-			// TODO: post GitHub PR comment via GitHub API
-			fmt.Println("muninn: PR comment reporter not yet implemented")
+	for _, format := range splitFormats(outputFormats) {
+		if err := writeReport(format, findings); err != nil {
+			return err
 		}
 	}
 
-	// TODO: evaluate cfg.FailOn against findings and return a sentinel error
-	//       when critical/high/etc. findings exceed the threshold.
+	return checkFailOn(cfg.FailOn, findings)
+}
+
+// activeScanners returns the ordered list of every scanner Muninn knows about.
+// Order determines the sequence in which scanners run and findings are reported.
+func activeScanners() []scanner.Scanner {
+	return []scanner.Scanner{
+		scanner.NewGitleaks(),
+		scanner.NewZizmor(),
+		scanner.NewActionlint(),
+		scanner.NewPoutine(),
+		scanner.NewSemgrep(),
+		scanner.NewOSVScanner(),
+		scanner.NewTrivy(),
+		scanner.NewCheckov(),
+	}
+}
+
+// runScanner executes a single scanner when it is enabled in cfg and present on
+// PATH. Scanner-level failures are logged and swallowed so one broken tool does
+// not abort the whole run; only the produced findings are returned.
+func runScanner(ctx context.Context, sc scanner.Scanner, target string, cfg *config.Config) []normalizer.Finding {
+	name := sc.Name()
+	if c, ok := cfg.Scanners[name]; ok && !c.Enabled {
+		fmt.Printf("muninn: %s disabled in config, skipping\n", name)
+		return nil
+	}
+	if !sc.IsAvailable() {
+		fmt.Printf("muninn: %s not found, skipping\n", name)
+		return nil
+	}
+	found, err := sc.Run(ctx, target)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "muninn: %s: %v\n", name, err)
+		return nil
+	}
+	fmt.Printf("muninn: %s: %d finding(s)\n", name, len(found))
+	return found
+}
+
+// writeReport writes findings in a single output format. Unknown formats are
+// ignored so a typo in the --output flag does not abort the run.
+func writeReport(format string, findings []normalizer.Finding) error {
+	switch format {
+	case "sarif":
+		if err := writeSARIF(sarifOutputFile, findings); err != nil {
+			return fmt.Errorf("writing SARIF output: %w", err)
+		}
+		fmt.Println("muninn: wrote " + sarifOutputFile)
+	case "json":
+		if err := writeJSON(jsonOutputFile, findings); err != nil {
+			return fmt.Errorf("writing JSON output: %w", err)
+		}
+		fmt.Println("muninn: wrote " + jsonOutputFile)
+	case "comment":
+		// TODO: post GitHub PR comment via GitHub API
+		fmt.Println("muninn: PR comment reporter not yet implemented")
+	}
 	return nil
+}
+
+// checkFailOn returns a non-nil error when any non-suppressed finding meets or
+// exceeds the threshold severity. An empty threshold disables the check.
+func checkFailOn(threshold string, findings []normalizer.Finding) error {
+	if threshold == "" {
+		return nil
+	}
+	limit := severityRank(normalizer.Severity(threshold))
+	count := 0
+	for _, f := range findings {
+		if !f.Suppressed && severityRank(f.Severity) >= limit {
+			count++
+		}
+	}
+	if count > 0 {
+		return fmt.Errorf("found %d finding(s) at or above %q severity", count, threshold)
+	}
+	return nil
+}
+
+// severityRank maps a severity to a comparable integer so thresholds can be
+// evaluated with a simple >= comparison. Higher means more severe.
+func severityRank(s normalizer.Severity) int {
+	switch s {
+	case normalizer.SeverityCritical:
+		return 5
+	case normalizer.SeverityHigh:
+		return 4
+	case normalizer.SeverityMedium:
+		return 3
+	case normalizer.SeverityLow:
+		return 2
+	case normalizer.SeverityInfo:
+		return 1
+	default:
+		return 0
+	}
+}
+
+// sarifLocation, sarifResult, sarifRun, and sarifDoc model the subset of the
+// SARIF 2.1.0 schema that Muninn emits.
+type sarifLocation struct {
+	ArtifactLocation struct {
+		URI   string `json:"uri"`
+		Index int    `json:"index"`
+	} `json:"artifactLocation"`
+	Region struct {
+		StartLine   int `json:"startLine"`
+		StartColumn int `json:"startColumn,omitempty"`
+	} `json:"region"`
+}
+
+type sarifResult struct {
+	RuleID  string `json:"ruleId"`
+	Message struct {
+		Text string `json:"text"`
+	} `json:"message"`
+	Locations []struct {
+		PhysicalLocation sarifLocation `json:"physicalLocation"`
+	} `json:"locations"`
+}
+
+type sarifRun struct {
+	Tool struct {
+		Driver struct {
+			Name           string `json:"name"`
+			InformationURI string `json:"informationUri"`
+			Rules          []any  `json:"rules"`
+		} `json:"driver"`
+	} `json:"tool"`
+	Results []sarifResult `json:"results"`
+}
+
+type sarifDoc struct {
+	Schema  string     `json:"$schema"`
+	Version string     `json:"version"`
+	Runs    []sarifRun `json:"runs"`
 }
 
 // writeSARIF writes a SARIF 2.1.0 document to path.
 // When findings is empty, a valid skeleton with zero results is written so that
 // the github/codeql-action/upload-sarif step does not error on a missing file.
 func writeSARIF(path string, findings []normalizer.Finding) error {
-	type sarifLocation struct {
-		ArtifactLocation struct {
-			URI   string `json:"uri"`
-			Index int    `json:"index"`
-		} `json:"artifactLocation"`
-		Region struct {
-			StartLine   int `json:"startLine"`
-			StartColumn int `json:"startColumn,omitempty"`
-		} `json:"region"`
-	}
-	type sarifResult struct {
-		RuleID  string `json:"ruleId"`
-		Message struct {
-			Text string `json:"text"`
-		} `json:"message"`
-		Locations []struct {
-			PhysicalLocation sarifLocation `json:"physicalLocation"`
-		} `json:"locations"`
-	}
-	type sarifRun struct {
-		Tool struct {
-			Driver struct {
-				Name           string `json:"name"`
-				InformationURI string `json:"informationUri"`
-				Rules          []any  `json:"rules"`
-			} `json:"driver"`
-		} `json:"tool"`
-		Results []sarifResult `json:"results"`
-	}
-	type sarifDoc struct {
-		Schema  string     `json:"$schema"`
-		Version string     `json:"version"`
-		Runs    []sarifRun `json:"runs"`
-	}
-
 	// GitHub's upload-sarif endpoint requires at least one run object, even when
 	// there are zero findings. Always emit a single Muninn run with an empty (but
 	// non-null) results array.
@@ -268,13 +261,23 @@ func writeSARIF(path string, findings []normalizer.Finding) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-// writeJSON writes findings as a JSON array to path.
+// writeJSON writes findings as a JSON array to path using the JSON reporter.
 func writeJSON(path string, findings []normalizer.Finding) error {
-	data, err := json.MarshalIndent(findings, "", "  ")
+	return writeToFile(path, func(w io.Writer) error {
+		return (&reporter.JSON{}).Write(context.Background(), w, findings)
+	})
+}
+
+// writeToFile creates path and hands the open file to fn, ensuring it is closed
+// afterwards. It centralizes the create/close boilerplate for reporters that
+// write to an io.Writer.
+func writeToFile(path string, fn func(io.Writer) error) error {
+	f, err := os.Create(path)
 	if err != nil {
-		return fmt.Errorf("marshalling findings: %w", err)
+		return fmt.Errorf("creating %s: %w", path, err)
 	}
-	return os.WriteFile(path, data, 0644)
+	defer f.Close()
+	return fn(f)
 }
 
 // envOr returns the value of the environment variable key, or fallback if unset.
