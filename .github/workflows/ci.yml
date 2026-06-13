@@ -41,7 +41,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Run Muninn
-        uses: skaldlab/muninn@main
+        uses: ./
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fail-on: critical
