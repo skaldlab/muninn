@@ -72,7 +72,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	// Default config returned until YAML parsing is implemented.
-	cfg := defaultConfig()
+	cfg := Defaults()
 
 	if err := validate(cfg); err != nil {
 		return nil, fmt.Errorf("invalid config: %w", err)
@@ -81,10 +81,10 @@ func Load(path string) (*Config, error) {
 	return cfg, nil
 }
 
-// defaultConfig returns a Config pre-populated with the recommended defaults
-// from the muninn.yml specification.
-func defaultConfig() *Config {
-	enabled := ScannerConfig{Enabled: true}
+// Defaults returns a Config pre-populated with the recommended defaults
+// from the muninn.yml specification. Callers use this when no config file is
+// present rather than operating with a zero-value Config.
+func Defaults() *Config {	enabled := ScannerConfig{Enabled: true}
 	return &Config{
 		Version: 1,
 		FailOn:  "critical",

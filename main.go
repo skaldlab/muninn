@@ -7,25 +7,28 @@
 //
 // Usage:
 //
-//	muninn scan [flags]
+//	muninn [flags]
 //
 // Flags:
 //
-//	--config    path to muninn.yml (default: muninn.yml)
-//	--target    path to repository root to scan (default: .)
-//	--fail-on   minimum severity to exit non-zero (default: critical)
-//	--output    output format: json, sarif, comment (default: json)
+//	--config    path to muninn.yml (default: muninn.yml, env: CONFIG_PATH)
+//	--target    path to repository root to scan (default: ., env: SCAN_TARGET)
+//	--fail-on   minimum severity to exit non-zero (default: critical, env: FAIL_ON)
+//	--output    comma-separated output formats: json,sarif,comment (env: OUTPUT_FORMATS)
 package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/skaldlab/muninn/internal/config"
+	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
 func main() {
@@ -37,10 +40,10 @@ func main() {
 func run() int {
 	fs := flag.NewFlagSet("muninn", flag.ContinueOnError)
 
-	configPath := fs.String("config", "muninn.yml", "path to muninn.yml config file")
-	target := fs.String("target", ".", "path to repository root to scan")
-	failOn := fs.String("fail-on", "", "minimum severity to fail the check (overrides config)")
-	output := fs.String("output", "json", "output format: json, sarif, comment")
+	configPath := fs.String("config", envOr("CONFIG_PATH", "muninn.yml"), "path to muninn.yml config file")
+	target := fs.String("target", envOr("SCAN_TARGET", "."), "path to repository root to scan")
+	failOn := fs.String("fail-on", envOr("FAIL_ON", ""), "minimum severity to fail the check (overrides config)")
+	output := fs.String("output", envOr("OUTPUT_FORMATS", "json"), "comma-separated output formats: json,sarif,comment")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "muninn: %v\n", err)
@@ -52,15 +55,9 @@ func run() int {
 
 	cfg, err := config.Load(*configPath)
 	if err != nil {
-		// Config file missing is acceptable at this scaffold stage; use defaults.
-		cfg, _ = config.Load("/dev/null")
-		if cfg == nil {
-			fmt.Fprintf(os.Stderr, "muninn: failed to load config: %v\n", err)
-			return 1
-		}
+		cfg = config.Defaults()
 	}
 
-	// CLI flag overrides config file value when provided.
 	if *failOn != "" {
 		cfg.FailOn = *failOn
 	}
@@ -74,15 +71,117 @@ func run() int {
 }
 
 // scan orchestrates all enabled scanners against target and writes the report.
-func scan(ctx context.Context, cfg *config.Config, target, outputFormat string) error {
-	// TODO: instantiate enabled scanners from cfg.Scanners
-	// TODO: run each scanner concurrently, collecting []Finding
-	// TODO: apply suppressions from cfg.Suppressions
-	// TODO: route to reporter based on outputFormat
-	// TODO: evaluate cfg.FailOn and return a sentinel error if threshold exceeded
-
-	fmt.Printf("muninn: scanning %s (format=%s, fail-on=%s)\n", target, outputFormat, cfg.FailOn)
+func scan(ctx context.Context, cfg *config.Config, target, outputFormats string) error {
+	fmt.Printf("muninn: scanning %s (formats=%s, fail-on=%s)\n", target, outputFormats, cfg.FailOn)
 	fmt.Println("muninn: scaffold only — scanner implementations pending")
 
+	// Empty findings for the scaffold run.
+	findings := []normalizer.Finding{}
+
+	formats := splitFormats(outputFormats)
+	for _, fmt_ := range formats {
+		switch fmt_ {
+		case "sarif":
+			if err := writeSARIF("muninn.sarif", findings); err != nil {
+				return fmt.Errorf("writing SARIF output: %w", err)
+			}
+			fmt.Println("muninn: wrote muninn.sarif")
+		case "json":
+			if err := writeJSON("muninn.json", findings); err != nil {
+				return fmt.Errorf("writing JSON output: %w", err)
+			}
+			fmt.Println("muninn: wrote muninn.json")
+		case "comment":
+			// TODO: post GitHub PR comment via GitHub API
+			fmt.Println("muninn: PR comment reporter not yet implemented")
+		}
+	}
+
+	// TODO: evaluate cfg.FailOn against findings and return a sentinel error
+	//       when critical/high/etc. findings exceed the threshold.
 	return nil
+}
+
+// writeSARIF writes a SARIF 2.1.0 document to path.
+// When findings is empty, a valid skeleton with zero results is written so that
+// the github/codeql-action/upload-sarif step does not error on a missing file.
+func writeSARIF(path string, findings []normalizer.Finding) error {
+	type sarifLocation struct {
+		ArtifactLocation struct {
+			URI   string `json:"uri"`
+			Index int    `json:"index"`
+		} `json:"artifactLocation"`
+		Region struct {
+			StartLine   int `json:"startLine"`
+			StartColumn int `json:"startColumn,omitempty"`
+		} `json:"region"`
+	}
+	type sarifResult struct {
+		RuleID  string `json:"ruleId"`
+		Message struct {
+			Text string `json:"text"`
+		} `json:"message"`
+		Locations []struct {
+			PhysicalLocation sarifLocation `json:"physicalLocation"`
+		} `json:"locations"`
+	}
+	type sarifRun struct {
+		Tool struct {
+			Driver struct {
+				Name           string `json:"name"`
+				InformationURI string `json:"informationUri"`
+				Rules          []any  `json:"rules"`
+			} `json:"driver"`
+		} `json:"tool"`
+		Results []sarifResult `json:"results"`
+	}
+	type sarifDoc struct {
+		Schema  string     `json:"$schema"`
+		Version string     `json:"version"`
+		Runs    []sarifRun `json:"runs"`
+	}
+
+	doc := sarifDoc{
+		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+		Version: "2.1.0",
+		Runs:    []sarifRun{},
+	}
+
+	// TODO: populate runs and results from findings once scanner implementations land.
+	_ = findings
+
+	data, err := json.MarshalIndent(doc, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshalling SARIF: %w", err)
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+// writeJSON writes findings as a JSON array to path.
+func writeJSON(path string, findings []normalizer.Finding) error {
+	data, err := json.MarshalIndent(findings, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshalling findings: %w", err)
+	}
+	return os.WriteFile(path, data, 0644)
+}
+
+// envOr returns the value of the environment variable key, or fallback if unset.
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
+}
+
+// splitFormats splits a comma-separated format string and trims whitespace.
+func splitFormats(s string) []string {
+	parts := strings.Split(s, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		if t := strings.TrimSpace(p); t != "" {
+			out = append(out, t)
+		}
+	}
+	return out
 }
