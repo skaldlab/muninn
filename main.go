@@ -90,6 +90,19 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: gitleaks not found, skipping")
 	}
 
+	zz := scanner.NewZizmor()
+	if zz.IsAvailable() {
+		zzFindings, err := zz.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: zizmor: %v\n", err)
+		} else {
+			findings = append(findings, zzFindings...)
+			fmt.Printf("muninn: zizmor: %d finding(s)\n", len(zzFindings))
+		}
+	} else {
+		fmt.Println("muninn: zizmor not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {
