@@ -103,6 +103,19 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: zizmor not found, skipping")
 	}
 
+	al := scanner.NewActionlint()
+	if al.IsAvailable() {
+		alFindings, err := al.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: actionlint: %v\n", err)
+		} else {
+			findings = append(findings, alFindings...)
+			fmt.Printf("muninn: actionlint: %d finding(s)\n", len(alFindings))
+		}
+	} else {
+		fmt.Println("muninn: actionlint not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {

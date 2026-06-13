@@ -1,0 +1,44 @@
+[
+  {
+    "message": "\"github.event.pull_request.title\" is potentially untrusted. avoid using it directly in inline scripts. instead, pass it through an environment variable. see https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions for more details",
+    "filepath": ".github/workflows/ci.yml",
+    "line": 24,
+    "column": 24,
+    "kind": "expression",
+    "severity": "error",
+    "snippet": "      - run: echo \"${{ github.event.pull_request.title }}\"",
+    "rule": {
+      "name": "expression-injection",
+      "category": "security"
+    },
+    "workflowContent": null
+  },
+  {
+    "message": "input \"token\" is not defined in action \"actions/upload-artifact@v3\". available inputs are \"name\", \"path\", \"if-no-files-found\", \"retention-days\"",
+    "filepath": ".github/workflows/release.yml",
+    "line": 41,
+    "column": 9,
+    "kind": "action",
+    "severity": "warning",
+    "snippet": "        token: ${{ secrets.GITHUB_TOKEN }}",
+    "rule": {
+      "name": "action",
+      "category": "action"
+    },
+    "workflowContent": null
+  },
+  {
+    "message": "shellcheck reported issue in this script: SC2086:info:1:6: Double quote to prevent globbing and word splitting",
+    "filepath": ".github/workflows/ci.yml",
+    "line": 37,
+    "column": 11,
+    "kind": "shellcheck",
+    "severity": "info",
+    "snippet": "      - run: echo $VERSION",
+    "rule": {
+      "name": "shellcheck",
+      "category": "shellcheck"
+    },
+    "workflowContent": null
+  }
+]
