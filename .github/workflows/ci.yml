@@ -24,6 +24,15 @@ jobs:
       - name: Build
         run: go build ./...
 
+      - name: Check formatting
+        run: |
+          files=$(gofmt -l .)
+          if [ -n "$files" ]; then
+            echo "The following files are not formatted:"
+            echo "$files"
+            exit 1
+          fi
+
       - name: Test
         run: go test -race -coverprofile=coverage.out ./...
 

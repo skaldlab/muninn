@@ -15,14 +15,14 @@ import (
 // checkovCheck mirrors one entry in checkov's failed_checks array.
 // Only fields Muninn needs are mapped; unknown fields are silently ignored.
 type checkovCheck struct {
-	CheckID     string `json:"check_id"`
-	BCCheckID   string `json:"bc_check_id"`
-	CheckName   string `json:"check_name"`
-	FilePath    string `json:"file_path"`
-	FileLineRange []int `json:"file_line_range"`
-	Resource    string `json:"resource"`
-	Severity    string `json:"severity"`
-	Guideline   string `json:"guideline"`
+	CheckID       string `json:"check_id"`
+	BCCheckID     string `json:"bc_check_id"`
+	CheckName     string `json:"check_name"`
+	FilePath      string `json:"file_path"`
+	FileLineRange []int  `json:"file_line_range"`
+	Resource      string `json:"resource"`
+	Severity      string `json:"severity"`
+	Guideline     string `json:"guideline"`
 }
 
 // checkovResults holds the results block within a single checkov framework output.

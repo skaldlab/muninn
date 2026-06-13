@@ -1,4 +1,4 @@
-.PHONY: test coverage coverage-html lint build check
+.PHONY: test coverage coverage-html fmt lint build check
 
 test:
 	go test -race ./...
@@ -12,7 +12,11 @@ coverage-html:
 	go tool cover -html=coverage.out -o coverage.html
 	open coverage.html
 
+fmt:
+	gofmt -w .
+
 lint:
+	gofmt -l . | grep . && echo "gofmt: files need formatting (run 'make fmt')" && exit 1 || true
 	go vet ./...
 
 build:

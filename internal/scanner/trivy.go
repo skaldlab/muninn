@@ -19,10 +19,10 @@ type trivyOutput struct {
 
 // trivyResult mirrors one entry in the Results array (one scanned target).
 type trivyResult struct {
-	Target          string         `json:"Target"`
-	Class           string         `json:"Class"`
-	Type            string         `json:"Type"`
-	Vulnerabilities []trivyVuln    `json:"Vulnerabilities"`
+	Target          string      `json:"Target"`
+	Class           string      `json:"Class"`
+	Type            string      `json:"Type"`
+	Vulnerabilities []trivyVuln `json:"Vulnerabilities"`
 }
 
 // trivyVuln mirrors one vulnerability entry within a result.
