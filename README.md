@@ -8,6 +8,7 @@
 Muninn orchestrates **8 best-in-class open-source scanners**, normalises their output into a single finding schema, and delivers results as GitHub PR comments, SARIF uploads, and structured JSON — with a single `uses:` line.
 
 [![CI](https://github.com/skaldlab/muninn/actions/workflows/ci.yml/badge.svg)](https://github.com/skaldlab/muninn/actions/workflows/ci.yml)
+[![Coverage](https://codecov.io/gh/skaldlab/muninn/branch/main/graph/badge.svg)](https://codecov.io/gh/skaldlab/muninn)
 [![License: AGPL-3.0](https://img.shields.io/badge/License-AGPL--3.0-blue.svg)](LICENSE)
 
 ---
