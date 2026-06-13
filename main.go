@@ -116,6 +116,19 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: actionlint not found, skipping")
 	}
 
+	po := scanner.NewPoutine()
+	if po.IsAvailable() {
+		poFindings, err := po.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: poutine: %v\n", err)
+		} else {
+			findings = append(findings, poFindings...)
+			fmt.Printf("muninn: poutine: %d finding(s)\n", len(poFindings))
+		}
+	} else {
+		fmt.Println("muninn: poutine not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {
