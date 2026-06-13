@@ -141,14 +141,22 @@ func writeSARIF(path string, findings []normalizer.Finding) error {
 		Runs    []sarifRun `json:"runs"`
 	}
 
+	// GitHub's upload-sarif endpoint requires at least one run object, even when
+	// there are zero findings. Always emit a single Muninn run with an empty (but
+	// non-null) results array.
+	run := sarifRun{Results: []sarifResult{}}
+	run.Tool.Driver.Name = "Muninn"
+	run.Tool.Driver.InformationURI = "https://github.com/skaldlab/muninn"
+	run.Tool.Driver.Rules = []any{}
+
+	// TODO: append a sarifResult per finding once scanner implementations land.
+	_ = findings
+
 	doc := sarifDoc{
 		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
 		Version: "2.1.0",
-		Runs:    []sarifRun{},
+		Runs:    []sarifRun{run},
 	}
-
-	// TODO: populate runs and results from findings once scanner implementations land.
-	_ = findings
 
 	data, err := json.MarshalIndent(doc, "", "  ")
 	if err != nil {
