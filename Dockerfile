@@ -6,39 +6,47 @@
 # logic easy to audit and cache efficiently.  Python tools get their own stage
 # so the heavy site-packages layer is isolated.
 #
-# Version detection uses the GitHub releases redirect URL
-# (https://github.com/owner/repo/releases/latest → /releases/tag/vX.Y.Z)
-# rather than the JSON API, so we never burn the unauthenticated rate-limit
-# of 60 req/hour.
+# Two download helpers are provided:
+#   gh_ver  — resolves the latest version via HTTP redirect (no API quota used).
+#             Use when the asset filename convention is stable and well-known.
+#   gh_asset — resolves the exact download URL via the GitHub releases API JSON.
+#              Use when the naming convention is project-specific (e.g. cargo-dist
+#              includes the version in the filename; goreleaser arch naming varies).
 
 # ── tools: download all binary scanners ──────────────────────────────────────
 FROM alpine:3.19 AS tools
 
 RUN apk add --no-cache curl tar
 
-# Resolve the latest release version for a GitHub repo without using the API.
-# Writes the bare version string (e.g. "1.2.3") to stdout.
+# gh_ver: resolve latest release version via HTTP redirect, no API call needed.
+# Usage: gh_ver OWNER/REPO  →  "1.2.3"
 RUN printf '#!/bin/sh\nset -e\ncurl -fsSLI -o /dev/null -w "%%{url_effective}" \\\n  "https://github.com/$1/releases/latest" | sed "s|.*/tag/v||"\n' \
     > /usr/local/bin/gh_ver && chmod +x /usr/local/bin/gh_ver
 
+# gh_asset: find the download URL for a release asset by grepping the releases
+# JSON for a filename pattern.  Uses one API call per invocation but correctly
+# handles any naming convention (goreleaser, cargo-dist, bespoke scripts, etc.).
+# Usage: gh_asset OWNER/REPO FILENAME_PATTERN  →  download URL
+RUN printf '#!/bin/sh\nset -e\ncurl -fsSL "https://api.github.com/repos/$1/releases/latest" \\\n  | awk -F\'"\' -v p="$2" \x27/"browser_download_url"/ && $0 ~ p {print $4; exit}\x27\n' \
+    > /usr/local/bin/gh_asset && chmod +x /usr/local/bin/gh_asset
+
 # gitleaks — secrets detection
-# Asset pattern: gitleaks_VERSION_linux_{x64|arm64}.tar.gz
+# Goreleaser asset: gitleaks_VERSION_linux_{x64|arm64}.tar.gz
 RUN ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/') && \
     VER=$(gh_ver gitleaks/gitleaks) && \
     curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_${ARCH}.tar.gz" \
          | tar -xz -C /usr/local/bin gitleaks && \
     chmod +x /usr/local/bin/gitleaks
 
-# zizmor — CI/CD pipeline security (Rust, musl target)
-# Asset pattern: zizmor-{x86_64|aarch64}-unknown-linux-musl.tar.gz
+# zizmor — CI/CD pipeline security
+# cargo-dist asset: zizmor-VERSION-TARGET.tar.gz  (version is part of the filename)
 RUN ARCH=$(uname -m | sed 's/x86_64/x86_64-unknown-linux-musl/;s/aarch64/aarch64-unknown-linux-musl/') && \
-    VER=$(gh_ver woodruffw/zizmor) && \
-    curl -fsSL "https://github.com/woodruffw/zizmor/releases/download/v${VER}/zizmor-${ARCH}.tar.gz" \
-         | tar -xz -C /usr/local/bin zizmor && \
+    DL=$(gh_asset woodruffw/zizmor "${ARCH}.tar.gz") && \
+    curl -fsSL "${DL}" | tar -xz -C /usr/local/bin zizmor && \
     chmod +x /usr/local/bin/zizmor
 
 # actionlint — GitHub Actions linter
-# Asset pattern: actionlint_VERSION_linux_{amd64|arm64}.tar.gz
+# Goreleaser asset: actionlint_VERSION_linux_{amd64|arm64}.tar.gz
 RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
     VER=$(gh_ver rhysd/actionlint) && \
     curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${VER}/actionlint_${VER}_linux_${ARCH}.tar.gz" \
@@ -46,16 +54,14 @@ RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
     chmod +x /usr/local/bin/actionlint
 
 # poutine — supply chain pipeline risks
-# Asset pattern: poutine_Linux_{x86_64|arm64}.tar.gz
-# Note: uses raw uname -m for amd64 (x86_64), but arm64 (not aarch64) for ARM.
-RUN ARCH=$(uname -m | sed 's/aarch64/arm64/') && \
-    VER=$(gh_ver boostsecurityio/poutine) && \
-    curl -fsSL "https://github.com/boostsecurityio/poutine/releases/download/v${VER}/poutine_Linux_${ARCH}.tar.gz" \
-         | tar -xz -C /usr/local/bin poutine && \
+# Use gh_asset to avoid guessing whether the project uses amd64 or x86_64 naming.
+RUN ARCH=$(uname -m | sed 's/x86_64/x86_64/;s/aarch64/arm64/') && \
+    DL=$(gh_asset boostsecurityio/poutine "Linux_${ARCH}.tar.gz") && \
+    curl -fsSL "${DL}" | tar -xz -C /usr/local/bin poutine && \
     chmod +x /usr/local/bin/poutine
 
 # osv-scanner — dependency CVEs (single static binary, no tarball)
-# Asset pattern: osv-scanner_linux_{amd64|arm64}
+# Goreleaser asset: osv-scanner_linux_{amd64|arm64}
 RUN ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') && \
     VER=$(gh_ver google/osv-scanner) && \
     curl -fsSL "https://github.com/google/osv-scanner/releases/download/v${VER}/osv-scanner_linux_${ARCH}" \
