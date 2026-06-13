@@ -1,0 +1,22 @@
+[
+  {
+    "Description": "AWS Access Key",
+    "StartLine": 12,
+    "EndLine": 12,
+    "StartColumn": 20,
+    "EndColumn": 40,
+    "Match": "AKIAIOSFODNN7EXAMPLE",
+    "Secret": "AKIAIOSFODNN7EXAMPLE",
+    "File": "config/deploy.sh",
+    "SymlinkFile": "",
+    "Commit": "abc1234567890abcdef1234567890abcdef123456",
+    "Entropy": 3.8,
+    "Author": "dev@example.com",
+    "Email": "dev@example.com",
+    "Date": "2024-01-15T10:30:00Z",
+    "Message": "add deploy config",
+    "Tags": [],
+    "RuleID": "aws-access-key",
+    "Fingerprint": "abc1234567890abcdef:config/deploy.sh:aws-access-key:12"
+  }
+]

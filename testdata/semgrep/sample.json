@@ -1,0 +1,45 @@
+{
+  "version": "1.1.0",
+  "results": [
+    {
+      "check_id": "python.lang.security.audit.dangerous-system-call.dangerous-system-call",
+      "path": "src/runner.py",
+      "start": {
+        "line": 42,
+        "col": 5,
+        "offset": 1024
+      },
+      "end": {
+        "line": 42,
+        "col": 30,
+        "offset": 1049
+      },
+      "extra": {
+        "message": "Found an `os.system` call. This is dangerous because `os.system` passes the command to the shell and can lead to shell injection vulnerabilities. Use the `subprocess` module instead.",
+        "metadata": {
+          "cwe": ["CWE-78: Improper Neutralization of Special Elements used in an OS Command ('OS Command Injection')"],
+          "owasp": ["A03:2021 - Injection"],
+          "references": ["https://owasp.org/Top10/A03_2021-Injection/"],
+          "category": "security",
+          "technology": ["python"],
+          "confidence": "HIGH",
+          "likelihood": "HIGH",
+          "impact": "HIGH",
+          "subcategory": ["audit"]
+        },
+        "severity": "ERROR",
+        "fingerprint": "semgrep:python.lang.security.audit.dangerous-system-call:src/runner.py:42"
+      }
+    }
+  ],
+  "errors": [],
+  "paths": {
+    "scanned": ["src/runner.py"],
+    "_comment": "truncated for brevity"
+  },
+  "stats": {
+    "total_time": 2.345,
+    "files_scanned": 1,
+    "total_findings": 1
+  }
+}
