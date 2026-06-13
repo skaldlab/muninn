@@ -14,7 +14,7 @@
 # unauthenticated API rate limit.
 
 # ── tools: download static Go scanner binaries ───────────────────────────────
-FROM alpine:3.19 AS tools
+FROM alpine:3.24 AS tools
 
 RUN apk add --no-cache curl tar
 
