@@ -168,6 +168,19 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: trivy not found, skipping")
 	}
 
+	ck := scanner.NewCheckov()
+	if ck.IsAvailable() {
+		ckFindings, err := ck.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: checkov: %v\n", err)
+		} else {
+			findings = append(findings, ckFindings...)
+			fmt.Printf("muninn: checkov: %d finding(s)\n", len(ckFindings))
+		}
+	} else {
+		fmt.Println("muninn: checkov not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {
