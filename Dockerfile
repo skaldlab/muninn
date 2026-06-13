@@ -75,7 +75,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /muninn .
 
 # ── final image (Debian/glibc) ───────────────────────────────────────────────
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 # git: gitleaks needs it for commit-history scanning
 # ca-certificates: HTTPS calls made by the scanners
