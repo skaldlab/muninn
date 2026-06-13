@@ -1,0 +1,46 @@
+{
+  "Results": [
+    {
+      "Target": "package-lock.json",
+      "Class": "lang-pkgs",
+      "Type": "npm",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2021-23337",
+          "PkgName": "lodash",
+          "InstalledVersion": "4.17.15",
+          "FixedVersion": "4.17.21",
+          "Title": "Prototype Pollution in lodash",
+          "Description": "Lodash versions prior to 4.17.21 are vulnerable to Prototype Pollution via the function zipObjectDeep.",
+          "Severity": "CRITICAL",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2021-23337",
+          "References": [
+            "https://github.com/advisories/GHSA-35jh-r3h4-6jhm",
+            "https://nvd.nist.gov/vuln/detail/CVE-2021-23337"
+          ],
+          "CweIDs": ["CWE-915"]
+        },
+        {
+          "VulnerabilityID": "CVE-2020-28500",
+          "PkgName": "lodash",
+          "InstalledVersion": "4.17.15",
+          "FixedVersion": "4.17.21",
+          "Title": "Regular Expression Denial of Service (ReDoS) in lodash",
+          "Description": "Lodash versions prior to 4.17.21 are vulnerable to ReDoS via the toNumber, trim and trimEnd functions.",
+          "Severity": "HIGH",
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2020-28500",
+          "References": [
+            "https://github.com/advisories/GHSA-jf85-cpcp-j695"
+          ],
+          "CweIDs": ["CWE-400"]
+        }
+      ]
+    },
+    {
+      "Target": "go.sum",
+      "Class": "lang-pkgs",
+      "Type": "gomod",
+      "Vulnerabilities": []
+    }
+  ]
+}

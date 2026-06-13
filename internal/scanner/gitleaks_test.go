@@ -35,6 +35,9 @@ import (
 // When MUNINN_FAKE_OSV=1 the process is being re-invoked as a fake osv-scanner
 // binary: it writes MUNINN_FAKE_STDOUT to stdout and exits with MUNINN_FAKE_EXIT.
 //
+// When MUNINN_FAKE_TRIVY=1 the process is being re-invoked as a fake trivy
+// binary: it writes MUNINN_FAKE_STDOUT to stdout and exits with MUNINN_FAKE_EXIT.
+//
 // Future scanner test files in this package must NOT define their own TestMain;
 // add a new MUNINN_FAKE_<SCANNER>=1 branch here instead.
 func TestMain(m *testing.M) {
@@ -60,6 +63,10 @@ func TestMain(m *testing.M) {
 	}
 	if os.Getenv("MUNINN_FAKE_OSV") == "1" {
 		runFakeOSV()
+		return
+	}
+	if os.Getenv("MUNINN_FAKE_TRIVY") == "1" {
+		runFakeTrivy()
 		return
 	}
 	os.Exit(m.Run())

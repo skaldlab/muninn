@@ -155,6 +155,19 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: osv-scanner not found, skipping")
 	}
 
+	tv := scanner.NewTrivy()
+	if tv.IsAvailable() {
+		tvFindings, err := tv.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: trivy: %v\n", err)
+		} else {
+			findings = append(findings, tvFindings...)
+			fmt.Printf("muninn: trivy: %d finding(s)\n", len(tvFindings))
+		}
+	} else {
+		fmt.Println("muninn: trivy not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {
