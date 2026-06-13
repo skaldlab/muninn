@@ -142,6 +142,19 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: semgrep not found, skipping")
 	}
 
+	osv := scanner.NewOSVScanner()
+	if osv.IsAvailable() {
+		osvFindings, err := osv.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: osv-scanner: %v\n", err)
+		} else {
+			findings = append(findings, osvFindings...)
+			fmt.Printf("muninn: osv-scanner: %d finding(s)\n", len(osvFindings))
+		}
+	} else {
+		fmt.Println("muninn: osv-scanner not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {

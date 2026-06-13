@@ -1,0 +1,121 @@
+{
+  "results": [
+    {
+      "source": {
+        "path": "package-lock.json",
+        "type": "lockfile"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "lodash",
+            "version": "4.17.15",
+            "ecosystem": "npm"
+          },
+          "vulnerabilities": [
+            {
+              "id": "GHSA-35jh-r3h4-6jhm",
+              "summary": "Prototype Pollution in lodash",
+              "details": "Lodash versions prior to 4.17.21 are vulnerable to Prototype Pollution via the function zipObjectDeep.",
+              "severity": [
+                {
+                  "type": "CVSS_V3",
+                  "score": "CVSS:3.1/AV:N/AC:L/PR:H/UI:N/S:U/C:H/I:H/A:H"
+                }
+              ],
+              "aliases": ["CVE-2021-23337"],
+              "references": [
+                {
+                  "type": "ADVISORY",
+                  "url": "https://github.com/advisories/GHSA-35jh-r3h4-6jhm"
+                },
+                {
+                  "type": "WEB",
+                  "url": "https://nvd.nist.gov/vuln/detail/CVE-2021-23337"
+                }
+              ],
+              "database_specific": {
+                "severity": "CRITICAL"
+              }
+            },
+            {
+              "id": "GHSA-jf85-cpcp-j695",
+              "summary": "ReDoS in lodash",
+              "details": "Lodash versions prior to 4.17.21 are vulnerable to Regular Expression Denial of Service via the toNumber, trim and trimEnd functions.",
+              "severity": [
+                {
+                  "type": "CVSS_V3",
+                  "score": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:L"
+                }
+              ],
+              "aliases": ["CVE-2020-28500"],
+              "references": [
+                {
+                  "type": "WEB",
+                  "url": "https://github.com/advisories/GHSA-jf85-cpcp-j695"
+                }
+              ],
+              "database_specific": {
+                "severity": "MODERATE"
+              }
+            }
+          ],
+          "groups": [
+            {
+              "ids": ["GHSA-35jh-r3h4-6jhm"],
+              "aliases": ["CVE-2021-23337"]
+            },
+            {
+              "ids": ["GHSA-jf85-cpcp-j695"],
+              "aliases": ["CVE-2020-28500"]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "path": "requirements.txt",
+        "type": "lockfile"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "requests",
+            "version": "2.27.0",
+            "ecosystem": "PyPI"
+          },
+          "vulnerabilities": [
+            {
+              "id": "GHSA-j8r2-6x86-q33q",
+              "summary": "Requests forwards proxy-authorization header to destination server",
+              "details": "Since Requests 2.3.0, Requests has been leaking Proxy-Authorization headers to destination servers when redirected to an HTTPS endpoint.",
+              "severity": [
+                {
+                  "type": "CVSS_V3",
+                  "score": "8.1"
+                }
+              ],
+              "aliases": ["CVE-2023-32681"],
+              "references": [
+                {
+                  "type": "ADVISORY",
+                  "url": "https://github.com/advisories/GHSA-j8r2-6x86-q33q"
+                }
+              ],
+              "database_specific": {
+                "severity": ""
+              }
+            }
+          ],
+          "groups": [
+            {
+              "ids": ["GHSA-j8r2-6x86-q33q"],
+              "aliases": ["CVE-2023-32681"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
