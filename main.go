@@ -29,6 +29,7 @@ import (
 
 	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
+	"github.com/skaldlab/muninn/internal/scanner"
 )
 
 func main() {
@@ -73,10 +74,21 @@ func run() int {
 // scan orchestrates all enabled scanners against target and writes the report.
 func scan(ctx context.Context, cfg *config.Config, target, outputFormats string) error {
 	fmt.Printf("muninn: scanning %s (formats=%s, fail-on=%s)\n", target, outputFormats, cfg.FailOn)
-	fmt.Println("muninn: scaffold only — scanner implementations pending")
 
-	// Empty findings for the scaffold run.
-	findings := []normalizer.Finding{}
+	var findings []normalizer.Finding
+
+	gl := scanner.NewGitleaks()
+	if gl.IsAvailable() {
+		glFindings, err := gl.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: gitleaks: %v\n", err)
+		} else {
+			findings = append(findings, glFindings...)
+			fmt.Printf("muninn: gitleaks: %d finding(s)\n", len(glFindings))
+		}
+	} else {
+		fmt.Println("muninn: gitleaks not found, skipping")
+	}
 
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
