@@ -103,6 +103,32 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		fmt.Println("muninn: zizmor not found, skipping")
 	}
 
+	al := scanner.NewActionlint()
+	if al.IsAvailable() {
+		alFindings, err := al.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: actionlint: %v\n", err)
+		} else {
+			findings = append(findings, alFindings...)
+			fmt.Printf("muninn: actionlint: %d finding(s)\n", len(alFindings))
+		}
+	} else {
+		fmt.Println("muninn: actionlint not found, skipping")
+	}
+
+	po := scanner.NewPoutine()
+	if po.IsAvailable() {
+		poFindings, err := po.Run(ctx, target)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: poutine: %v\n", err)
+		} else {
+			findings = append(findings, poFindings...)
+			fmt.Printf("muninn: poutine: %d finding(s)\n", len(poFindings))
+		}
+	} else {
+		fmt.Println("muninn: poutine not found, skipping")
+	}
+
 	formats := splitFormats(outputFormats)
 	for _, fmt_ := range formats {
 		switch fmt_ {
