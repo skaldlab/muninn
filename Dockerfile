@@ -20,15 +20,32 @@ RUN apk add --no-cache curl tar
 
 # gh_ver: resolve latest release version via HTTP redirect, no API call needed.
 # Usage: gh_ver OWNER/REPO  →  "1.2.3"
-RUN printf '#!/bin/sh\nset -e\ncurl -fsSLI -o /dev/null -w "%%{url_effective}" \\\n  "https://github.com/$1/releases/latest" | sed "s|.*/tag/v||"\n' \
-    > /usr/local/bin/gh_ver && chmod +x /usr/local/bin/gh_ver
+RUN <<'EOF'
+cat > /usr/local/bin/gh_ver << 'SCRIPT'
+#!/bin/sh
+set -e
+curl -fsSLI -o /dev/null -w "%{url_effective}" \
+  "https://github.com/$1/releases/latest" | sed "s|.*/tag/v||"
+SCRIPT
+chmod +x /usr/local/bin/gh_ver
+EOF
 
 # gh_asset: find the download URL for a release asset by grepping the releases
 # JSON for a filename pattern.  Uses one API call per invocation but correctly
 # handles any naming convention (goreleaser, cargo-dist, bespoke scripts, etc.).
 # Usage: gh_asset OWNER/REPO FILENAME_PATTERN  →  download URL
-RUN printf '#!/bin/sh\nset -e\ncurl -fsSL "https://api.github.com/repos/$1/releases/latest" \\\n  | awk -F\'"\' -v p="$2" \x27/"browser_download_url"/ && $0 ~ p {print $4; exit}\x27\n' \
-    > /usr/local/bin/gh_asset && chmod +x /usr/local/bin/gh_asset
+RUN <<'EOF'
+cat > /usr/local/bin/gh_asset << 'SCRIPT'
+#!/bin/sh
+set -e
+curl -fsSL "https://api.github.com/repos/$1/releases/latest" \
+  | grep "browser_download_url" \
+  | grep "$2" \
+  | head -1 \
+  | sed 's/.*"browser_download_url": "\([^"]*\)".*/\1/'
+SCRIPT
+chmod +x /usr/local/bin/gh_asset
+EOF
 
 # gitleaks — secrets detection
 # Goreleaser asset: gitleaks_VERSION_linux_{x64|arm64}.tar.gz
