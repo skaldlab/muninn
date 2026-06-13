@@ -1,4 +1,3 @@
-// Package scanner implements the Scanner interface for each supported tool.
 package scanner
 
 import (

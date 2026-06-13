@@ -1,4 +1,3 @@
-// Package scanner implements the Scanner interface for each supported tool.
 package scanner
 
 import (
@@ -42,11 +41,11 @@ type zizmorRule struct {
 }
 
 type zizmorResult struct {
-	RuleID       string              `json:"ruleId"`
-	Level        string              `json:"level"`
-	Message      zizmorMessage       `json:"message"`
-	Locations    []zizmorLocation    `json:"locations"`
-	Fingerprints map[string]string   `json:"fingerprints"`
+	RuleID       string            `json:"ruleId"`
+	Level        string            `json:"level"`
+	Message      zizmorMessage     `json:"message"`
+	Locations    []zizmorLocation  `json:"locations"`
+	Fingerprints map[string]string `json:"fingerprints"`
 }
 
 type zizmorMessage struct {
