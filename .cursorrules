@@ -1,0 +1,58 @@
+# Muninn Project Conventions
+# These rules guide all AI assistants and contributors working in this repository.
+
+## Architecture
+
+- The canonical output type for ALL scanner implementations is `[]normalizer.Finding`
+  (defined in `internal/normalizer/finding.go`). Never return raw scanner output to callers.
+- Every scanner MUST implement the `Scanner` interface in `internal/scanner/scanner.go`.
+  The interface is the only contract; callers must not type-assert to concrete types.
+- Reporters live in `internal/reporter/`. They consume `[]normalizer.Finding` and write
+  to an `io.Writer`. Never pass raw findings to a reporter — apply suppressions first.
+
+## Error Handling
+
+- Always wrap errors: `fmt.Errorf("context: %w", err)`. Never discard errors.
+- Never call `panic()`. Return errors up the call stack.
+- Scanner `Run()` returning `(nil, nil)` means "ran successfully, zero findings".
+  A non-nil error means the scanner itself failed (binary not found, parse error, etc.).
+
+## Function Length
+
+- Keep functions under 40 lines. If a function is growing, extract a helper.
+- Helpers that are only used by one file should stay in that file.
+
+## Testing
+
+- Every scanner implementation needs a test file: `internal/scanner/<name>_test.go`.
+- Tests MUST use fixture data from `testdata/<scanner>/sample.json`.
+  Never make real network calls or exec real binaries in tests.
+- Use `testing.T` and standard library `testing` package only — no test frameworks.
+
+## Comments
+
+- Comments explain WHY, not WHAT. Do not narrate the code.
+- All exported identifiers (types, functions, constants) must have a godoc comment.
+- Do not add TODO/FIXME without a description of what needs to be done.
+
+## Variables and State
+
+- No package-level variables except for constants and errors (`var ErrFoo = errors.New(...)`).
+- Inject dependencies via constructor arguments or function parameters.
+- Use `context.Context` as the first parameter of any function that may block or call I/O.
+
+## Style
+
+- `gofmt` is the only formatter. Do not use `goimports` directives that auto-add imports.
+- Imports: stdlib, then internal (`github.com/skaldlab/muninn/...`), then third-party.
+  Separate each group with a blank line.
+- Prefer table-driven tests over repeated `if` blocks.
+
+## Adding a New Scanner
+
+1. Create `internal/scanner/<name>.go` with a struct implementing `Scanner`.
+2. Add fixture output to `testdata/<name>/sample.json`.
+3. Add a test file `internal/scanner/<name>_test.go` that parses the fixture.
+4. Add a `ScannerConfig` key in `internal/config/config.go`.
+5. Wire the scanner into the orchestrator in `main.go` `scan()`.
+6. Update README.md scanner table.
