@@ -67,7 +67,7 @@ RUN curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib
          | sh -s -- -b /usr/local/bin
 
 # ── builder: compile Muninn (static, runs on any libc) ───────────────────────
-FROM golang:1.22-alpine AS builder
+FROM golang:1.26-alpine AS builder
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
