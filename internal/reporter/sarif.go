@@ -27,14 +27,20 @@ func (s *SARIF) Write(_ context.Context, w io.Writer, findings []normalizer.Find
 }
 
 func (s *SARIF) buildDoc(findings []normalizer.Finding) sarifDoc {
+	active := make([]normalizer.Finding, 0, len(findings))
+	for _, f := range findings {
+		if !f.Suppressed {
+			active = append(active, f)
+		}
+	}
 	run := sarifRun{
-		Results: make([]sarifResult, 0, len(findings)),
+		Results: make([]sarifResult, 0, len(active)),
 	}
 	run.Tool.Driver.Name = "Muninn"
 	run.Tool.Driver.Version = "0.1.0"
 	run.Tool.Driver.InformationURI = "https://github.com/skaldlab/muninn"
-	run.Tool.Driver.Rules = s.buildRules(findings)
-	for _, f := range findings {
+	run.Tool.Driver.Rules = s.buildRules(active)
+	for _, f := range active {
 		run.Results = append(run.Results, toSARIFResult(f))
 	}
 	return sarifDoc{

@@ -86,6 +86,11 @@ func run() int {
 // GitHub Actions docker runs may start with a working directory outside the
 // checked-out repository, so muninn.yml is not always found on the first path.
 func loadConfig(configPath, target string) *config.Config {
+	if !filepath.IsAbs(target) {
+		if abs, err := filepath.Abs(target); err == nil {
+			target = abs
+		}
+	}
 	paths := []string{configPath}
 	if !filepath.IsAbs(configPath) {
 		paths = append(paths, filepath.Join(target, configPath))
