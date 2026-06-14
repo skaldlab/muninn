@@ -26,6 +26,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
@@ -93,6 +94,8 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		findings = append(findings, runScanner(ctx, sc, target, cfg)...)
 	}
 
+	findings = applySuppressions(findings, cfg.Suppressions)
+
 	for _, format := range splitFormats(outputFormats) {
 		if err := writeReport(ctx, format, findings); err != nil {
 			return err
@@ -122,10 +125,12 @@ func activeScanners() []scanner.Scanner {
 // not abort the whole run; only the produced findings are returned.
 func runScanner(ctx context.Context, sc scanner.Scanner, target string, cfg *config.Config) []normalizer.Finding {
 	name := sc.Name()
-	if c, ok := cfg.Scanners[name]; ok && !c.Enabled {
+	scCfg, ok := cfg.Scanners[name]
+	if ok && !scCfg.Enabled {
 		fmt.Printf("muninn: %s disabled in config, skipping\n", name)
 		return nil
 	}
+	sc.Configure(scCfg)
 	if !sc.IsAvailable() {
 		fmt.Printf("muninn: %s not found, skipping\n", name)
 		return nil
@@ -198,6 +203,40 @@ func severityRank(s normalizer.Severity) int {
 	default:
 		return 0
 	}
+}
+
+// applySuppressions marks findings as suppressed when a matching, non-expired
+// suppression rule exists. Suppressed findings are kept in the returned slice
+// so that reporters can display them differently. The input slice is not
+// mutated; a new slice is always returned.
+func applySuppressions(findings []normalizer.Finding, suppressions []config.Suppression) []normalizer.Finding {
+	if len(suppressions) == 0 {
+		return findings
+	}
+	now := time.Now()
+	out := make([]normalizer.Finding, len(findings))
+	copy(out, findings)
+	for i := range out {
+		if isSuppressed(out[i], suppressions, now) {
+			out[i].Suppressed = true
+		}
+	}
+	return out
+}
+
+// isSuppressed returns true when f matches at least one active suppression
+// rule. A suppression is active when its Expires field is zero or in the future.
+func isSuppressed(f normalizer.Finding, suppressions []config.Suppression, now time.Time) bool {
+	for _, s := range suppressions {
+		if s.Fingerprint != f.Fingerprint {
+			continue
+		}
+		if !s.Expires.IsZero() && !now.Before(s.Expires) {
+			continue // expired
+		}
+		return true
+	}
+	return false
 }
 
 // writeSARIF writes a SARIF 2.1.0 document to path via the SARIF reporter.
