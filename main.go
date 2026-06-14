@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -228,15 +229,22 @@ func applySuppressions(findings []normalizer.Finding, suppressions []config.Supp
 // rule. A suppression is active when its Expires field is zero or in the future.
 func isSuppressed(f normalizer.Finding, suppressions []config.Suppression, now time.Time) bool {
 	for _, s := range suppressions {
-		if s.Fingerprint != f.Fingerprint {
+		if !suppressionActive(s, now) {
 			continue
 		}
-		if !s.Expires.IsZero() && !now.Before(s.Expires) {
-			continue // expired
+		if s.ID != "" && strings.Contains(filepath.ToSlash(f.File), s.ID) {
+			return true
 		}
-		return true
+		if s.Fingerprint != "" && s.Fingerprint == f.Fingerprint {
+			return true
+		}
 	}
 	return false
+}
+
+// suppressionActive reports whether a suppression rule has not yet expired.
+func suppressionActive(s config.Suppression, now time.Time) bool {
+	return s.Expires.IsZero() || now.Before(s.Expires)
 }
 
 // writeSARIF writes a SARIF 2.1.0 document to path via the SARIF reporter.
