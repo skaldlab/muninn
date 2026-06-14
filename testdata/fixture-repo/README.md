@@ -8,6 +8,7 @@ configuration files used to verify Muninn's scanner integrations.
 | File | Purpose | Scanner tested |
 |------|---------|----------------|
 | `secrets.env` | Fake credentials | gitleaks |
+| `config/fake-key.pem` | Fake private key | gitleaks |
 | `.github/workflows/vulnerable.yml` | Dangerous workflow patterns | zizmor, actionlint |
 | `src/app.py` | Insecure code patterns | semgrep |
 | `terraform/main.tf` | IaC misconfigurations | checkov |
