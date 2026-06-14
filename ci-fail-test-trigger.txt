@@ -1,5 +1,0 @@
-# TEMPORARY — intentional fake private key to verify fail-on: critical in CI.
-# Revert this file after confirming the Muninn Security Scan job fails.
-DEPLOY_KEY=-----BEGIN RSA PRIVATE KEY-----
-MIIEpAIBAAKCAQEA7fake7key7for7ci7test7only7not7real7at7all7
------END RSA PRIVATE KEY-----
