@@ -24,14 +24,15 @@ type findingCounts struct {
 }
 
 // resolveOutputPaths returns SARIF and JSON paths for the current environment.
-// In GitHub Actions the well-known /tmp paths are used so upload steps can
-// reference them reliably; locally files are written to the working directory.
+// The Docker action sets OUTPUT_PATH explicitly; other CI jobs (including
+// integration tests) write to the working directory unless overridden.
 func resolveOutputPaths() (sarifPath, jsonPath string) {
-	if override := os.Getenv("OUTPUT_PATH"); override != "" {
-		return override, defaultJSONPath
-	}
-	if os.Getenv("GITHUB_ACTIONS") == "true" {
-		return defaultSARIFPath, defaultJSONPath
+	if sarif := os.Getenv("OUTPUT_PATH"); sarif != "" {
+		json := os.Getenv("JSON_PATH")
+		if json == "" {
+			json = defaultJSONPath
+		}
+		return sarif, json
 	}
 	return localSARIFPath, localJSONPath
 }

@@ -56,5 +56,6 @@ runs:
     FAIL_ON: ${{ inputs.fail-on }}
     CONFIG_PATH: ${{ inputs.config }}
     OUTPUT_FORMATS: ${{ inputs.format }}
-    OUTPUT_PATH: ${{ inputs.output }}
+    OUTPUT_PATH: ${{ inputs.output != '' && inputs.output || '/tmp/muninn.sarif' }}
+    JSON_PATH: /tmp/muninn.json
     SCAN_TARGET: ${{ inputs.target }}

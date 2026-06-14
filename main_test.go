@@ -210,9 +210,15 @@ func TestScanOrchestrator_BelowThreshold(t *testing.T) {
 func TestScanOrchestrator_CommentFormat(t *testing.T) {
 	dir := chdirTemp(t)
 	cfg := config.Defaults()
-	// "comment" format logs a not-yet-implemented message; must not error.
 	if err := scan(context.Background(), cfg, dir, "comment"); err != nil {
 		t.Fatalf("scan() unexpected error: %v", err)
+	}
+}
+
+func TestWriteReport_Comment(t *testing.T) {
+	os.Unsetenv("GITHUB_EVENT_NAME")
+	if err := writeReport(context.Background(), "comment", nil, localSARIFPath, localJSONPath); err != nil {
+		t.Fatalf("writeReport(comment) = %v", err)
 	}
 }
 

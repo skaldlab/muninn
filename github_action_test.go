@@ -52,6 +52,27 @@ func TestWriteGitHubOutputs_InActions(t *testing.T) {
 	}
 }
 
+func TestCountActiveFindings_AllSeverities(t *testing.T) {
+	findings := []normalizer.Finding{
+		{Severity: normalizer.SeverityCritical},
+		{Severity: normalizer.SeverityHigh},
+		{Severity: normalizer.SeverityMedium},
+		{Severity: normalizer.SeverityLow},
+		{Severity: normalizer.SeverityInfo},
+	}
+	got := countActiveFindings(findings)
+	if got.Total != 5 || got.Critical != 1 || got.High != 1 || got.Medium != 1 || got.Low != 1 {
+		t.Errorf("countActiveFindings() = %+v, want all severities counted", got)
+	}
+}
+
+func TestWriteGitHubOutputs_BadPath(t *testing.T) {
+	t.Setenv("GITHUB_OUTPUT", "/nonexistent-dir/output")
+	if err := writeGitHubOutputs(findingCounts{Total: 1}, defaultSARIFPath, defaultJSONPath); err == nil {
+		t.Fatal("expected error writing to invalid GITHUB_OUTPUT path")
+	}
+}
+
 func TestCountActiveFindings_SkipsSuppressed(t *testing.T) {
 	findings := []normalizer.Finding{
 		{Severity: normalizer.SeverityCritical},
@@ -73,11 +94,20 @@ func TestResolveOutputPaths_Local(t *testing.T) {
 	}
 }
 
-func TestResolveOutputPaths_Actions(t *testing.T) {
-	t.Setenv("GITHUB_ACTIONS", "true")
-	os.Unsetenv("OUTPUT_PATH")
+func TestResolveOutputPaths_ActionDefaults(t *testing.T) {
+	t.Setenv("OUTPUT_PATH", defaultSARIFPath)
+	t.Setenv("JSON_PATH", defaultJSONPath)
 	sarif, json := resolveOutputPaths()
 	if sarif != defaultSARIFPath || json != defaultJSONPath {
 		t.Errorf("resolveOutputPaths() = (%q, %q), want /tmp paths", sarif, json)
+	}
+}
+
+func TestResolveOutputPaths_OutputPathOnly(t *testing.T) {
+	t.Setenv("OUTPUT_PATH", "/custom/out.sarif")
+	os.Unsetenv("JSON_PATH")
+	_, json := resolveOutputPaths()
+	if json != defaultJSONPath {
+		t.Errorf("json path = %q, want default %q", json, defaultJSONPath)
 	}
 }
