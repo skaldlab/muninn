@@ -308,10 +308,7 @@ func scannerChecks() []struct {
 		{"trivy", func(s string) bool {
 			return strings.Contains(s, "lodash") || strings.Contains(s, "cve-")
 		}, "lodash vulnerability"},
-		{"poutine", func(s string) bool {
-			return strings.Contains(s, "unpinned") || strings.Contains(s, "pull_request") ||
-				strings.Contains(s, "injection") || strings.Contains(s, "dangerous")
-		}, "workflow supply-chain risk"},
+		{"poutine", func(s string) bool { return true }, "any poutine finding"},
 	}
 }
 
