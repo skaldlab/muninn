@@ -1,0 +1,10 @@
+name: Vulnerable Workflow
+on:
+  pull_request_target:           # zizmor: dangerous trigger
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2  # zizmor: unpinned action
+      - name: Echo input
+        run: echo ${{ github.event.pull_request.title }}  # actionlint finding

@@ -1,0 +1,24 @@
+# This allowlist tells gitleaks that secrets in this directory
+# are intentional test fixtures, not real credentials.
+# This file also serves as a documentation example for users
+# who want to configure gitleaks allowlists in their own repos.
+
+[allowlist]
+  description = "Test fixture secrets — all values are intentionally fake"
+  regexes = [
+    '''AKIAIOSFODNN7EXAMPLE''',
+    '''wJalrXUtnFEMI''',
+    '''AAAAAAAAAAAAAA''',
+    '''aaaaaaaaaaaaaaa''',
+    '''fake-stripe-secret''',
+    '''fake-password'''
+  ]
+  paths = [
+    '''testdata/fixture-repo/'''
+  ]
+  stopwords = [
+    "fake",
+    "example",
+    "test",
+    "EXAMPLE"
+  ]

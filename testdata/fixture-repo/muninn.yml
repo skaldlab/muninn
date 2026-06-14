@@ -1,0 +1,21 @@
+version: 1
+fail-on: critical
+scanners:
+  gitleaks:
+    enabled: true
+  zizmor:
+    enabled: true
+  actionlint:
+    enabled: true
+  semgrep:
+    enabled: true
+    rulesets:
+      - p/security-audit
+  trivy:
+    enabled: false              # no container in fixture
+  osv-scanner:
+    enabled: false              # no real lockfile with vulns
+  poutine:
+    enabled: false              # requires git history
+  checkov:
+    enabled: true
