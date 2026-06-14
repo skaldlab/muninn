@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
@@ -484,5 +485,135 @@ func TestRunScanner_EnabledRuns(t *testing.T) {
 	got := runScanner(context.Background(), scanner.NewPoutine(), t.TempDir(), cfg)
 	if got != nil && len(got) != 0 {
 		t.Errorf("runScanner = %v, want empty", got)
+	}
+}
+
+// ── applySuppressions ─────────────────────────────────────────────────────────
+
+func TestApplySuppressions_MatchingFingerprint(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "fp-abc", Severity: normalizer.SeverityHigh},
+		{ID: "f2", Fingerprint: "fp-xyz", Severity: normalizer.SeverityMedium},
+	}
+	suppressions := []config.Suppression{
+		{Fingerprint: "fp-abc", Reason: "false positive"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if len(got) != 2 {
+		t.Fatalf("applySuppressions returned %d findings, want 2", len(got))
+	}
+	if !got[0].Suppressed {
+		t.Errorf("findings[0].Suppressed = false, want true (fingerprint matched)")
+	}
+	if got[1].Suppressed {
+		t.Errorf("findings[1].Suppressed = true, want false (fingerprint did not match)")
+	}
+}
+
+func TestApplySuppressions_NoMatch(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "fp-abc", Severity: normalizer.SeverityHigh},
+	}
+	suppressions := []config.Suppression{
+		{Fingerprint: "fp-other", Reason: "unrelated"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if got[0].Suppressed {
+		t.Errorf("findings[0].Suppressed = true, want false (no fingerprint match)")
+	}
+}
+
+func TestApplySuppressions_Expired(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "fp-abc", Severity: normalizer.SeverityHigh},
+	}
+	past := time.Now().Add(-24 * time.Hour)
+	suppressions := []config.Suppression{
+		{Fingerprint: "fp-abc", Reason: "expired", Expires: past},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if got[0].Suppressed {
+		t.Errorf("findings[0].Suppressed = true, want false (suppression is expired)")
+	}
+}
+
+func TestApplySuppressions_NotYetExpired(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "fp-abc", Severity: normalizer.SeverityHigh},
+	}
+	future := time.Now().Add(24 * time.Hour)
+	suppressions := []config.Suppression{
+		{Fingerprint: "fp-abc", Reason: "still active", Expires: future},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if !got[0].Suppressed {
+		t.Errorf("findings[0].Suppressed = false, want true (suppression not yet expired)")
+	}
+}
+
+func TestApplySuppressions_NoSuppressions(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "fp-abc", Severity: normalizer.SeverityHigh},
+	}
+
+	got := applySuppressions(findings, nil)
+
+	if got[0].Suppressed {
+		t.Errorf("findings[0].Suppressed = true, want false (no suppressions)")
+	}
+}
+
+func TestApplySuppressions_DoesNotMutateInput(t *testing.T) {
+	original := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "fp-abc", Severity: normalizer.SeverityHigh},
+	}
+	suppressions := []config.Suppression{
+		{Fingerprint: "fp-abc", Reason: "test"},
+	}
+
+	_ = applySuppressions(original, suppressions)
+
+	if original[0].Suppressed {
+		t.Error("applySuppressions mutated the input slice")
+	}
+}
+
+// ── shouldFail (checkFailOn) ──────────────────────────────────────────────────
+
+func TestShouldFail_AboveThreshold(t *testing.T) {
+	// A critical finding with fail-on=high must trigger failure.
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "f1", Severity: normalizer.SeverityCritical},
+	}
+	if err := checkFailOn("high", findings); err == nil {
+		t.Fatal("expected error for critical finding above 'high' threshold, got nil")
+	}
+}
+
+func TestShouldFail_BelowThreshold(t *testing.T) {
+	// A medium finding with fail-on=high must not trigger failure.
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "f1", Severity: normalizer.SeverityMedium},
+	}
+	if err := checkFailOn("high", findings); err != nil {
+		t.Fatalf("expected nil for medium finding below 'high' threshold, got: %v", err)
+	}
+}
+
+func TestShouldFail_Suppressed(t *testing.T) {
+	// A suppressed critical finding must not trigger failure even at critical threshold.
+	findings := []normalizer.Finding{
+		{ID: "f1", Fingerprint: "f1", Severity: normalizer.SeverityCritical, Suppressed: true},
+	}
+	if err := checkFailOn("critical", findings); err != nil {
+		t.Fatalf("expected nil for suppressed critical finding, got: %v", err)
 	}
 }

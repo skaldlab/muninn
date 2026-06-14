@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -62,6 +63,9 @@ func (p *Poutine) IsAvailable() bool {
 	_, err := p.lookPath("poutine")
 	return err == nil
 }
+
+// Configure implements Scanner. Poutine has no configurable options.
+func (p *Poutine) Configure(_ config.ScannerConfig) {}
 
 // Run implements Scanner.
 func (p *Poutine) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {

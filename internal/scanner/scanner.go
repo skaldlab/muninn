@@ -6,6 +6,7 @@ package scanner
 import (
 	"context"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -29,4 +30,9 @@ type Scanner interface {
 	// on PATH. The orchestrator calls this before Run to decide whether to skip
 	// a scanner gracefully or return a hard error.
 	IsAvailable() bool
+
+	// Configure applies per-scanner options from the muninn.yml config block.
+	// It must be called before Run. Implementations ignore fields that are not
+	// relevant to their scanner.
+	Configure(cfg config.ScannerConfig)
 }

@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -51,6 +52,9 @@ type Trivy struct {
 	// lookPath resolves a binary name on PATH.
 	// Tests inject a fake to control IsAvailable() without installing trivy.
 	lookPath func(string) (string, error)
+
+	severity      []string
+	ignoreUnfixed bool
 }
 
 // NewTrivy returns a Trivy scanner ready for production use.
@@ -70,6 +74,13 @@ func (t *Trivy) IsAvailable() bool {
 	return err == nil
 }
 
+// Configure implements Scanner. It applies severity filter and ignore-unfixed
+// flag from muninn.yml.
+func (t *Trivy) Configure(cfg config.ScannerConfig) {
+	t.severity = cfg.Severity
+	t.ignoreUnfixed = cfg.IgnoreUnfixed
+}
+
 // Run implements Scanner.
 func (t *Trivy) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {
 	if !t.IsAvailable() {
@@ -85,13 +96,7 @@ func (t *Trivy) Run(ctx context.Context, target string) ([]normalizer.Finding, e
 // execute runs the trivy subprocess and captures its JSON output from stdout.
 // Exit code 1 means findings were found — not a crash.
 func (t *Trivy) execute(ctx context.Context, target string) (*trivyOutput, error) {
-	cmd := t.execFunc(ctx, "trivy", "fs",
-		"--format", "json",
-		"--quiet",
-		"--severity", "HIGH,CRITICAL",
-		"--ignore-unfixed",
-		target,
-	)
+	cmd := t.execFunc(ctx, "trivy", t.buildArgs(target)...)
 	out, err := cmd.Output()
 	if err != nil && !isTrivyFindingsFound(err) {
 		if ctx.Err() != nil {
@@ -100,6 +105,21 @@ func (t *Trivy) execute(ctx context.Context, target string) (*trivyOutput, error
 		return nil, fmt.Errorf("trivy: running scanner: %w", err)
 	}
 	return parseTrivyJSON(out)
+}
+
+// buildArgs constructs the trivy CLI argument list from the configured
+// severity filter and ignore-unfixed flag. Falls back to HIGH,CRITICAL when
+// no severity is configured via Configure.
+func (t *Trivy) buildArgs(target string) []string {
+	sev := strings.Join(t.severity, ",")
+	if sev == "" {
+		sev = "HIGH,CRITICAL"
+	}
+	args := []string{"fs", "--format", "json", "--quiet", "--severity", sev}
+	if t.ignoreUnfixed {
+		args = append(args, "--ignore-unfixed")
+	}
+	return append(args, target)
 }
 
 // parseTrivyJSON unmarshals the JSON object trivy writes to stdout.
