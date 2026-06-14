@@ -68,11 +68,14 @@ RUN curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib
 
 # ── builder: compile Muninn (static, runs on any libc) ───────────────────────
 FROM golang:1.26.4-alpine AS builder
+ARG VERSION=dev
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /muninn .
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath \
+    -ldflags="-s -w -X github.com/skaldlab/muninn/internal/version.Version=${VERSION}" \
+    -o /muninn .
 
 # ── final image (Debian/glibc) ───────────────────────────────────────────────
 FROM python:3.14-slim

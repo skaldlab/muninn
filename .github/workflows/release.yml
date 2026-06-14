@@ -1,0 +1,70 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  release:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
+        with:
+          go-version: '1.26.4'
+          cache: true
+
+      - name: Extract version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Build release binaries
+        run: |
+          mkdir -p dist
+          LDFLAGS="-s -w -X github.com/skaldlab/muninn/internal/version.Version=${VERSION}"
+          for target in linux/amd64 darwin/amd64 darwin/arm64; do
+            GOOS="${target%/*}"
+            GOARCH="${target#*/}"
+            out="dist/muninn-${GOOS}-${GOARCH}"
+            CGO_ENABLED=0 GOOS="$GOOS" GOARCH="$GOARCH" \
+              go build -trimpath -ldflags="${LDFLAGS}" -o "$out" .
+            shasum -a 256 "$out" > "${out}.sha256"
+          done
+
+      - name: Log in to GHCR
+        uses: docker/login-action@3b9550dfea54832eaeb2c077999c64259ccef6a0 # v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@8d9a34723c395462b881b28dad9e03a3cb932c8e # v6
+        with:
+          context: .
+          push: true
+          build-args: |
+            VERSION=${{ env.VERSION }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@7b95040e5a23d62eee53ad58fb38878928559495 # v2
+        with:
+          generate_release_notes: true
+          body_path: CHANGELOG.md
+          files: dist/*
