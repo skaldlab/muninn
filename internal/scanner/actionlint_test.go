@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
@@ -59,6 +60,21 @@ func lookPathActionlint() func(string) (string, error) {
 	return func(string) (string, error) { return "/usr/bin/actionlint", nil }
 }
 
+// writeActionlintStubWorkflow creates a minimal workflow file so Run() invokes
+// the fake actionlint binary after globbing workflow paths.
+func writeActionlintStubWorkflow(t *testing.T, target string) {
+	t.Helper()
+	dir := filepath.Join(target, ".github", "workflows")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatalf("creating workflows dir: %v", err)
+	}
+	path := filepath.Join(dir, "stub.yml")
+	content := "name: stub\non: push\njobs:\n  x:\n    runs-on: ubuntu-latest\n"
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		t.Fatalf("writing stub workflow: %v", err)
+	}
+}
+
 // ── tests ─────────────────────────────────────────────────────────────────────
 
 func TestActionlintName(t *testing.T) {
@@ -92,9 +108,7 @@ func TestActionlintRun_WithFindings(t *testing.T) {
 	// Provide a target with a real .github/workflows directory so Run() does
 	// not short-circuit before invoking the fake binary.
 	target := t.TempDir()
-	if err := os.MkdirAll(target+"/.github/workflows", 0755); err != nil {
-		t.Fatalf("creating workflows dir: %v", err)
-	}
+	writeActionlintStubWorkflow(t, target)
 
 	a := &Actionlint{
 		execFunc: fakeActionlintExecFunc(string(fixture), 1), // exit 1 = findings found
@@ -176,9 +190,7 @@ func TestActionlintRun_NoWorkflows(t *testing.T) {
 
 func TestActionlintRun_NoFindings(t *testing.T) {
 	target := t.TempDir()
-	if err := os.MkdirAll(target+"/.github/workflows", 0755); err != nil {
-		t.Fatalf("creating workflows dir: %v", err)
-	}
+	writeActionlintStubWorkflow(t, target)
 
 	a := &Actionlint{
 		execFunc: fakeActionlintExecFunc("[]", 0), // exit 0 = no findings
@@ -212,9 +224,7 @@ func TestActionlintRun_BinaryNotFound(t *testing.T) {
 
 func TestActionlintRun_Timeout(t *testing.T) {
 	target := t.TempDir()
-	if err := os.MkdirAll(target+"/.github/workflows", 0755); err != nil {
-		t.Fatalf("creating workflows dir: %v", err)
-	}
+	writeActionlintStubWorkflow(t, target)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
