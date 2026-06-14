@@ -8,10 +8,8 @@ import (
 )
 
 const (
-	defaultSARIFPath = "/tmp/muninn.sarif"
-	defaultJSONPath  = "/tmp/muninn.json"
-	localSARIFPath   = "muninn.sarif"
-	localJSONPath    = "muninn.json"
+	localSARIFPath = "muninn.sarif"
+	localJSONPath  = "muninn.json"
 )
 
 // findingCounts holds severity totals for GitHub Action outputs.
@@ -24,13 +22,13 @@ type findingCounts struct {
 }
 
 // resolveOutputPaths returns SARIF and JSON paths for the current environment.
-// The Docker action sets OUTPUT_PATH explicitly; other CI jobs (including
-// integration tests) write to the working directory unless overridden.
+// The Docker action sets OUTPUT_PATH to muninn.sarif in the workspace mount so
+// upload steps on the runner host can read the generated reports.
 func resolveOutputPaths() (sarifPath, jsonPath string) {
 	if sarif := os.Getenv("OUTPUT_PATH"); sarif != "" {
 		json := os.Getenv("JSON_PATH")
 		if json == "" {
-			json = defaultJSONPath
+			json = localJSONPath
 		}
 		return sarif, json
 	}

@@ -12,7 +12,7 @@ import (
 func TestWriteGitHubOutputs_NotInActions(t *testing.T) {
 	os.Unsetenv("GITHUB_OUTPUT")
 	counts := findingCounts{Total: 3, Critical: 1, High: 2}
-	if err := writeGitHubOutputs(counts, defaultSARIFPath, defaultJSONPath); err != nil {
+	if err := writeGitHubOutputs(counts, localSARIFPath, localJSONPath); err != nil {
 		t.Fatalf("writeGitHubOutputs() = %v, want nil", err)
 	}
 }
@@ -26,7 +26,7 @@ func TestWriteGitHubOutputs_InActions(t *testing.T) {
 	t.Setenv("GITHUB_OUTPUT", outputFile)
 
 	counts := findingCounts{Total: 5, Critical: 1, High: 2, Medium: 1, Low: 1}
-	if err := writeGitHubOutputs(counts, defaultSARIFPath, defaultJSONPath); err != nil {
+	if err := writeGitHubOutputs(counts, localSARIFPath, localJSONPath); err != nil {
 		t.Fatalf("writeGitHubOutputs() = %v", err)
 	}
 
@@ -41,8 +41,8 @@ func TestWriteGitHubOutputs_InActions(t *testing.T) {
 		"high-count":     "2",
 		"medium-count":   "1",
 		"low-count":      "1",
-		"sarif-path":     defaultSARIFPath,
-		"json-path":      defaultJSONPath,
+		"sarif-path":     localSARIFPath,
+		"json-path":      localJSONPath,
 	}
 	for key, want := range checks {
 		line := key + "=" + want
@@ -68,7 +68,7 @@ func TestCountActiveFindings_AllSeverities(t *testing.T) {
 
 func TestWriteGitHubOutputs_BadPath(t *testing.T) {
 	t.Setenv("GITHUB_OUTPUT", "/nonexistent-dir/output")
-	if err := writeGitHubOutputs(findingCounts{Total: 1}, defaultSARIFPath, defaultJSONPath); err == nil {
+	if err := writeGitHubOutputs(findingCounts{Total: 1}, localSARIFPath, localJSONPath); err == nil {
 		t.Fatal("expected error writing to invalid GITHUB_OUTPUT path")
 	}
 }
@@ -95,11 +95,11 @@ func TestResolveOutputPaths_Local(t *testing.T) {
 }
 
 func TestResolveOutputPaths_ActionDefaults(t *testing.T) {
-	t.Setenv("OUTPUT_PATH", defaultSARIFPath)
-	t.Setenv("JSON_PATH", defaultJSONPath)
+	t.Setenv("OUTPUT_PATH", localSARIFPath)
+	t.Setenv("JSON_PATH", localJSONPath)
 	sarif, json := resolveOutputPaths()
-	if sarif != defaultSARIFPath || json != defaultJSONPath {
-		t.Errorf("resolveOutputPaths() = (%q, %q), want /tmp paths", sarif, json)
+	if sarif != localSARIFPath || json != localJSONPath {
+		t.Errorf("resolveOutputPaths() = (%q, %q), want workspace paths", sarif, json)
 	}
 }
 
@@ -107,7 +107,7 @@ func TestResolveOutputPaths_OutputPathOnly(t *testing.T) {
 	t.Setenv("OUTPUT_PATH", "/custom/out.sarif")
 	os.Unsetenv("JSON_PATH")
 	_, json := resolveOutputPaths()
-	if json != defaultJSONPath {
-		t.Errorf("json path = %q, want default %q", json, defaultJSONPath)
+	if json != localJSONPath {
+		t.Errorf("json path = %q, want default %q", json, localJSONPath)
 	}
 }

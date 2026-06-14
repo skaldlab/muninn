@@ -24,7 +24,7 @@ inputs:
     required: false
     default: 'sarif,comment'
   output:
-    description: 'Optional SARIF output path override (default /tmp/muninn.sarif in Actions)'
+    description: 'Optional SARIF output path override (default muninn.sarif in workspace)'
     required: false
     default: ''
   target:
@@ -56,6 +56,6 @@ runs:
     FAIL_ON: ${{ inputs.fail-on }}
     CONFIG_PATH: ${{ inputs.config }}
     OUTPUT_FORMATS: ${{ inputs.format }}
-    OUTPUT_PATH: ${{ inputs.output != '' && inputs.output || '/tmp/muninn.sarif' }}
-    JSON_PATH: /tmp/muninn.json
+    OUTPUT_PATH: ${{ inputs.output != '' && inputs.output || 'muninn.sarif' }}
+    JSON_PATH: muninn.json
     SCAN_TARGET: ${{ inputs.target }}
