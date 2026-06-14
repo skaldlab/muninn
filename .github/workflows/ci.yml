@@ -120,7 +120,7 @@ jobs:
         uses: ./
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          fail-on: critical
+          fail-on: low
           format: sarif,comment
 
       - name: Upload SARIF results
