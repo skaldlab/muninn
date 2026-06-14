@@ -195,9 +195,10 @@ func validate(cfg *Config) error {
 		"high":     true,
 		"medium":   true,
 		"low":      true,
+		"info":     true,
 	}
 	if cfg.FailOn != "" && !validSeverities[cfg.FailOn] {
-		return fmt.Errorf("invalid fail-on value %q; must be one of: critical, high, medium, low", cfg.FailOn)
+		return fmt.Errorf("invalid fail-on value %q; must be one of: critical, high, medium, low, info", cfg.FailOn)
 	}
 
 	return nil
