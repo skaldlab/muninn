@@ -11,8 +11,7 @@ import (
 
 const (
 	commentMaxDesc = 300
-	commentFooter  = `<sub>🪶 Powered by <a href="https://github.com/skaldlab/muninn">Muninn</a>` +
-		` by Skald Lab · <a href="https://skaldlab.dev">skaldlab.dev</a></sub>`
+	commentFooter  = "---\n\n🪶 Powered by [Muninn](https://github.com/skaldlab/muninn) by Skald Lab · [skaldlab.dev](https://skaldlab.dev)"
 )
 
 // Comment formats findings as Markdown suitable for posting as a GitHub PR

@@ -19,8 +19,11 @@ func TestCommentReporter_EmptyFindings(t *testing.T) {
 	if !strings.Contains(out, "✅ No security issues found") {
 		t.Errorf("empty output missing clean-scan message, got:\n%s", out)
 	}
-	if !strings.Contains(out, commentFooter) {
-		t.Error("empty output missing footer")
+	if !strings.Contains(out, "[Muninn](https://github.com/skaldlab/muninn)") {
+		t.Error("empty output missing footer link")
+	}
+	if strings.Contains(out, "<a href=") {
+		t.Error("footer should use markdown links, not HTML")
 	}
 }
 
@@ -46,7 +49,7 @@ func TestCommentReporter_WithFindings(t *testing.T) {
 	if !strings.Contains(out, "Exposed secret") {
 		t.Error("output missing critical finding title")
 	}
-	if !strings.Contains(out, commentFooter) {
+	if !strings.Contains(out, "[skaldlab.dev](https://skaldlab.dev)") {
 		t.Error("output missing footer")
 	}
 }
