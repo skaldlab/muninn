@@ -12,7 +12,7 @@ import (
 const (
 	commentMaxDesc = 300
 	commentFooter  = `<sub>🪶 Powered by <a href="https://github.com/skaldlab/muninn">Muninn</a>` +
-		` by Skaldlab · <a href="https://muninn.dev">muninn.dev</a></sub>`
+		` by Skald Lab · <a href="https://muninn.dev">muninn.dev</a></sub>`
 )
 
 // Comment formats findings as Markdown suitable for posting as a GitHub PR

@@ -36,8 +36,8 @@ import (
 )
 
 const (
-	sarifOutputFile = "muninn.sarif"
-	jsonOutputFile  = "muninn.json"
+	sarifOutputFile = localSARIFPath
+	jsonOutputFile  = localJSONPath
 )
 
 func main() {
@@ -115,10 +115,16 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 
 	findings = applySuppressions(findings, cfg.Suppressions)
 
+	sarifPath, jsonPath := resolveOutputPaths()
 	for _, format := range splitFormats(outputFormats) {
-		if err := writeReport(ctx, format, findings); err != nil {
+		if err := writeReport(ctx, format, findings, sarifPath, jsonPath); err != nil {
 			return err
 		}
+	}
+
+	counts := countActiveFindings(findings)
+	if err := writeGitHubOutputs(counts, sarifPath, jsonPath); err != nil {
+		fmt.Fprintf(os.Stderr, "muninn: writing GitHub outputs: %v\n", err)
 	}
 
 	return checkFailOn(cfg.FailOn, findings)
@@ -165,22 +171,25 @@ func runScanner(ctx context.Context, sc scanner.Scanner, target string, cfg *con
 
 // writeReport writes findings in a single output format. Unknown formats are
 // ignored so a typo in the --output flag does not abort the run.
-func writeReport(ctx context.Context, format string, findings []normalizer.Finding) error {
+func writeReport(ctx context.Context, format string, findings []normalizer.Finding, sarifPath, jsonPath string) error {
 	switch format {
 	case "sarif":
-		if err := writeSARIF(sarifOutputFile, findings); err != nil {
+		if err := writeSARIF(sarifPath, findings); err != nil {
 			return fmt.Errorf("writing SARIF output: %w", err)
 		}
-		fmt.Println("muninn: wrote " + sarifOutputFile)
+		fmt.Println("muninn: wrote " + sarifPath)
 	case "json":
-		if err := writeJSON(jsonOutputFile, findings); err != nil {
+		if err := writeJSON(jsonPath, findings); err != nil {
 			return fmt.Errorf("writing JSON output: %w", err)
 		}
-		fmt.Println("muninn: wrote " + jsonOutputFile)
+		fmt.Println("muninn: wrote " + jsonPath)
 	case "comment":
-		rep := &reporter.Comment{}
-		if err := rep.Write(ctx, os.Stdout, findings); err != nil {
-			return fmt.Errorf("writing comment output: %w", err)
+		body, err := renderComment(ctx, findings)
+		if err != nil {
+			return err
+		}
+		if err := postPRComment(ctx, body); err != nil {
+			fmt.Fprintf(os.Stderr, "muninn: PR comment: %v\n", err)
 		}
 	}
 	return nil
