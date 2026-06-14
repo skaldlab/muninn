@@ -63,10 +63,7 @@ func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	cfg, err := config.Load(*configPath)
-	if err != nil {
-		cfg = config.Defaults()
-	}
+	cfg := loadConfig(*configPath, *target)
 
 	if *failOn != "" {
 		cfg.FailOn = *failOn
@@ -83,6 +80,22 @@ func run() int {
 	}
 
 	return 0
+}
+
+// loadConfig reads muninn.yml, trying target-relative paths before defaults.
+// GitHub Actions docker runs may start with a working directory outside the
+// checked-out repository, so muninn.yml is not always found on the first path.
+func loadConfig(configPath, target string) *config.Config {
+	paths := []string{configPath}
+	if !filepath.IsAbs(configPath) {
+		paths = append(paths, filepath.Join(target, configPath))
+	}
+	for _, p := range paths {
+		if cfg, err := config.Load(p); err == nil {
+			return cfg
+		}
+	}
+	return config.Defaults()
 }
 
 // scan orchestrates all enabled scanners against target, writes the requested

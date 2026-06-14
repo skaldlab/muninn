@@ -97,6 +97,8 @@ COPY --from=tools /usr/local/bin/trivy       /usr/local/bin/trivy
 
 COPY --from=builder /muninn /usr/local/bin/muninn
 
+WORKDIR /github/workspace
+
 LABEL org.opencontainers.image.title="Muninn Security Scanner" \
       org.opencontainers.image.description="All-in-one security scanner for GitHub Actions pipelines" \
       org.opencontainers.image.source="https://github.com/skaldlab/muninn" \
