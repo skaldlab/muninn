@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	commentMaxDesc      = 300
+	commentMaxDesc       = 300
 	commentMaxPerSection = 10
-	commentFooter       = "\n*🪶 Powered by [Muninn](https://github.com/skaldlab/muninn) · [Skald Lab](https://skaldlab.dev)*"
+	commentFooter        = "\n*🪶 Powered by [Muninn](https://github.com/skaldlab/muninn) · [Skald Lab](https://skaldlab.dev)*"
 )
 
 // Comment formats findings as Markdown suitable for posting as a GitHub PR
