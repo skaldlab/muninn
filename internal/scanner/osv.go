@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -88,6 +89,9 @@ func (o *OSVScanner) IsAvailable() bool {
 	_, err := o.lookPath("osv-scanner")
 	return err == nil
 }
+
+// Configure implements Scanner. OSVScanner has no configurable options.
+func (o *OSVScanner) Configure(_ config.ScannerConfig) {}
 
 // Run implements Scanner.
 func (o *OSVScanner) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {

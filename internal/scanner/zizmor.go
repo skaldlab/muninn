@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os/exec"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -93,6 +94,9 @@ func (z *Zizmor) IsAvailable() bool {
 	_, err := z.lookPath("zizmor")
 	return err == nil
 }
+
+// Configure implements Scanner. Zizmor has no configurable options.
+func (z *Zizmor) Configure(_ config.ScannerConfig) {}
 
 // Run implements Scanner.
 func (z *Zizmor) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {

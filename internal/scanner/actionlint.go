@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -55,6 +56,9 @@ func (a *Actionlint) IsAvailable() bool {
 	_, err := a.lookPath("actionlint")
 	return err == nil
 }
+
+// Configure implements Scanner. Actionlint has no configurable options.
+func (a *Actionlint) Configure(_ config.ScannerConfig) {}
 
 // Run implements Scanner.
 func (a *Actionlint) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {

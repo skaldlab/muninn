@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -57,6 +58,9 @@ func (g *Gitleaks) IsAvailable() bool {
 	_, err := g.lookPath("gitleaks")
 	return err == nil
 }
+
+// Configure implements Scanner. Gitleaks has no configurable options.
+func (g *Gitleaks) Configure(_ config.ScannerConfig) {}
 
 // Run implements Scanner.
 func (g *Gitleaks) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {

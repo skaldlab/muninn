@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -47,6 +48,8 @@ type Checkov struct {
 	// lookPath resolves a binary name on PATH.
 	// Tests inject a fake to control IsAvailable() without installing checkov.
 	lookPath func(string) (string, error)
+
+	skipChecks []string
 }
 
 // NewCheckov returns a Checkov scanner ready for production use.
@@ -66,6 +69,11 @@ func (c *Checkov) IsAvailable() bool {
 	return err == nil
 }
 
+// Configure implements Scanner. It applies skip_checks from muninn.yml.
+func (c *Checkov) Configure(cfg config.ScannerConfig) {
+	c.skipChecks = cfg.SkipChecks
+}
+
 // Run implements Scanner.
 func (c *Checkov) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {
 	if !c.IsAvailable() {
@@ -81,12 +89,7 @@ func (c *Checkov) Run(ctx context.Context, target string) ([]normalizer.Finding,
 // execute runs the checkov subprocess and captures its JSON output from stdout.
 // Exit code 1 means failed checks were found — not a crash.
 func (c *Checkov) execute(ctx context.Context, target string) ([]checkovBlock, error) {
-	cmd := c.execFunc(ctx, "checkov",
-		"--directory", target,
-		"--output", "json",
-		"--quiet",
-		"--compact",
-	)
+	cmd := c.execFunc(ctx, "checkov", c.buildArgs(target)...)
 	out, err := cmd.Output()
 	if err != nil && !isCheckovFindingsFound(err) {
 		if ctx.Err() != nil {
@@ -95,6 +98,16 @@ func (c *Checkov) execute(ctx context.Context, target string) ([]checkovBlock, e
 		return nil, fmt.Errorf("checkov: running scanner: %w", err)
 	}
 	return parseCheckovJSON(out)
+}
+
+// buildArgs constructs the checkov CLI argument list, appending --skip-check
+// flags for each entry in skipChecks.
+func (c *Checkov) buildArgs(target string) []string {
+	args := []string{"--directory", target, "--output", "json", "--quiet", "--compact"}
+	for _, check := range c.skipChecks {
+		args = append(args, "--skip-check", check)
+	}
+	return args
 }
 
 // parseCheckovJSON handles both the single-object and array forms that checkov

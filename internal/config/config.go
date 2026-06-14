@@ -9,6 +9,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 )
 
 // Config is the top-level structure for muninn.yml.
@@ -60,6 +61,14 @@ type Suppression struct {
 
 	// Reason is a required human-readable explanation for the suppression.
 	Reason string
+
+	// Fingerprint is the finding fingerprint to suppress. When set it takes
+	// precedence over Tool+RuleID matching.
+	Fingerprint string
+
+	// Expires is the UTC time after which this suppression is no longer active.
+	// The zero value means the suppression never expires.
+	Expires time.Time
 }
 
 // Load reads and parses the muninn.yml file at path.

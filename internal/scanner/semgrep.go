@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"github.com/skaldlab/muninn/internal/config"
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
@@ -53,6 +54,9 @@ type Semgrep struct {
 	// lookPath resolves a binary name on PATH.
 	// Tests inject a fake to control IsAvailable() without installing semgrep.
 	lookPath func(string) (string, error)
+
+	rulesets     []string
+	excludePaths []string
 }
 
 // NewSemgrep returns a Semgrep scanner ready for production use.
@@ -72,6 +76,14 @@ func (s *Semgrep) IsAvailable() bool {
 	return err == nil
 }
 
+// Configure implements Scanner. It applies rulesets and exclude_paths from
+// muninn.yml. When no rulesets are configured the defaults are used at
+// runtime.
+func (s *Semgrep) Configure(cfg config.ScannerConfig) {
+	s.rulesets = cfg.Rulesets
+	s.excludePaths = cfg.ExcludePaths
+}
+
 // Run implements Scanner.
 func (s *Semgrep) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {
 	if !s.IsAvailable() {
@@ -87,12 +99,8 @@ func (s *Semgrep) Run(ctx context.Context, target string) ([]normalizer.Finding,
 // execute runs the semgrep subprocess and captures its JSON output from stdout.
 // Exit code 1 means findings were found — not a crash. Exit code 2 is fatal.
 func (s *Semgrep) execute(ctx context.Context, target string) (*semgrepOutput, error) {
-	cmd := s.execFunc(ctx, "semgrep", "scan", "--json",
-		"--config", "p/security-audit",
-		"--config", "p/secrets",
-		"--no-rewrite-rule-ids",
-		target,
-	)
+	args := s.buildArgs(target)
+	cmd := s.execFunc(ctx, "semgrep", args...)
 	// Output() captures stdout even when cmd exits non-zero.
 	out, err := cmd.Output()
 	if err != nil && !isSemgrepFindingsFound(err) {
@@ -102,6 +110,24 @@ func (s *Semgrep) execute(ctx context.Context, target string) (*semgrepOutput, e
 		return nil, fmt.Errorf("semgrep: running scanner: %w", err)
 	}
 	return parseSemgrepJSON(out)
+}
+
+// buildArgs constructs the semgrep CLI argument list from the configured
+// rulesets and exclude paths. Falls back to the default rulesets when none
+// have been configured via Configure.
+func (s *Semgrep) buildArgs(target string) []string {
+	rulesets := s.rulesets
+	if len(rulesets) == 0 {
+		rulesets = []string{"p/security-audit", "p/secrets"}
+	}
+	args := []string{"scan", "--json", "--no-rewrite-rule-ids"}
+	for _, r := range rulesets {
+		args = append(args, "--config", r)
+	}
+	for _, p := range s.excludePaths {
+		args = append(args, "--exclude", p)
+	}
+	return append(args, target)
 }
 
 // parseSemgrepJSON unmarshals the JSON object semgrep writes to stdout.
