@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 
 	"github.com/skaldlab/muninn/internal/config"
@@ -85,13 +86,7 @@ func (g *Gitleaks) execute(ctx context.Context, target string) ([]gitleaksOutput
 	tmp.Close()
 	defer os.Remove(reportPath)
 
-	cmd := g.execFunc(ctx, "gitleaks",
-		"detect",
-		"--source", target,
-		"--report-format", "json",
-		"--report-path", reportPath,
-		"--no-git",
-	)
+	cmd := g.execFunc(ctx, "gitleaks", gitleaksArgs(target, reportPath)...)
 	if err := cmd.Run(); err != nil && !isGitleaksLeakFound(err) {
 		if ctx.Err() != nil {
 			return nil, fmt.Errorf("gitleaks: %w", ctx.Err())
@@ -99,6 +94,27 @@ func (g *Gitleaks) execute(ctx context.Context, target string) ([]gitleaksOutput
 		return nil, fmt.Errorf("gitleaks: running scanner: %w", err)
 	}
 	return readGitleaksReport(reportPath)
+}
+
+// gitleaksArgs builds the CLI argument list for a directory scan.
+func gitleaksArgs(target, reportPath string) []string {
+	args := []string{
+		"detect",
+		"--source", target,
+		"--report-format", "json",
+		"--report-path", reportPath,
+		"--no-git",
+	}
+	if cfg := filepath.Join(target, ".gitleaks.toml"); fileExists(cfg) {
+		args = append(args, "--config", cfg)
+	}
+	return args
+}
+
+// fileExists reports whether path is a regular file.
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
 }
 
 // readGitleaksReport reads and parses the JSON report file written by gitleaks.
