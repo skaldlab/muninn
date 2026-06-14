@@ -21,3 +21,18 @@ chmod +x /usr/local/bin/actionlint
 
 pip install --user semgrep zizmor checkov
 echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+VER=$(gh_ver boostsecurityio/poutine)
+ARCH_RAW=$(uname -m | sed 's/aarch64/arm64/')
+curl -fsSL "https://github.com/boostsecurityio/poutine/releases/download/v${VER}/poutine_Linux_${ARCH_RAW}.tar.gz" \
+	| tar -xz -C /usr/local/bin poutine
+chmod +x /usr/local/bin/poutine
+
+VER=$(gh_ver google/osv-scanner)
+curl -fsSL "https://github.com/google/osv-scanner/releases/download/v${VER}/osv-scanner_linux_${ARCH}" \
+	-o /usr/local/bin/osv-scanner
+chmod +x /usr/local/bin/osv-scanner
+
+curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
+	| sh -s -- -b /usr/local/bin

@@ -33,6 +33,9 @@ var requiredScanners = []string{
 	"actionlint",
 	"semgrep",
 	"checkov",
+	"osv-scanner",
+	"trivy",
+	"poutine",
 }
 
 func TestMain(m *testing.M) {
@@ -166,11 +169,46 @@ type sarifResult struct {
 	RuleID string `json:"ruleId"`
 }
 
-// baseArgs returns common CLI flags for scanning the fixture repo.
-func baseArgs(extra ...string) []string {
+// prepareFixtureTarget copies the fixture repo into a temp dir and commits it
+// so poutine can analyze local git history.
+func prepareFixtureTarget(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	src := fixtureRepo + string(os.PathSeparator) + "."
+	cmd := exec.Command("cp", "-R", src, dir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("copy fixture repo: %v\n%s", err, out)
+	}
+	initGitRepo(t, dir)
+	return dir
+}
+
+// initGitRepo creates an initial commit poutine needs for analyze_local.
+func initGitRepo(t *testing.T, dir string) {
+	t.Helper()
+	runGit(t, dir, "init")
+	runGit(t, dir, "config", "user.email", "fixture@test.local")
+	runGit(t, dir, "config", "user.name", "Fixture")
+	runGit(t, dir, "add", ".")
+	runGit(t, dir, "commit", "-m", "integration fixture")
+}
+
+// runGit executes a git command in dir and fails the test on error.
+func runGit(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git %s in %s: %v\n%s", strings.Join(args, " "), dir, err, out)
+	}
+}
+
+// baseArgs returns common CLI flags for scanning a prepared fixture copy.
+func baseArgs(t *testing.T, extra ...string) []string {
+	target := prepareFixtureTarget(t)
 	args := []string{
-		"--target", fixtureRepo,
-		"--config", filepath.Join(fixtureRepo, "muninn.yml"),
+		"--target", target,
+		"--config", filepath.Join(target, "muninn.yml"),
 	}
 	return append(args, extra...)
 }
@@ -236,23 +274,13 @@ func hasFindingMatching(findings []normalizer.Finding, tool string, match func(s
 	return false
 }
 
-// TestFullScan runs Muninn against the fixture repo and verifies known
-// vulnerabilities are detected end-to-end.
-func TestFullScan(t *testing.T) {
-	requireScanners(t)
-
-	res := runMuninn(t, append(baseArgs(), "--output", "json")...)
-	report := readJSONReport(t, res)
-
-	if res.ExitCode != 0 && res.ExitCode != 1 {
-		t.Fatalf("muninn exit code = %d, want 0 or 1 (fail-on may trigger)", res.ExitCode)
-	}
-
-	if report.Summary.Total <= 5 {
-		t.Errorf("summary.total = %d, want > 5", report.Summary.Total)
-	}
-
-	checks := []struct {
+// scannerChecks lists end-to-end expectations for every Muninn scanner.
+func scannerChecks() []struct {
+	tool    string
+	matches func(string) bool
+	desc    string
+} {
+	return []struct {
 		tool    string
 		matches func(string) bool
 		desc    string
@@ -266,29 +294,65 @@ func TestFullScan(t *testing.T) {
 		}, "pull_request_target or unpinned action"},
 		{"actionlint", func(s string) bool { return true }, "any actionlint finding"},
 		{"semgrep", func(s string) bool {
-			return strings.Contains(s, "shell") || strings.Contains(s, "exec") || strings.Contains(s, "subprocess")
+			return strings.Contains(s, "shell") || strings.Contains(s, "exec") ||
+				strings.Contains(s, "subprocess")
 		}, "shell=True or exec usage"},
 		{"checkov", func(s string) bool {
-			return strings.Contains(s, "s3") || strings.Contains(s, "public") || strings.Contains(s, "ckv_aws")
+			return strings.Contains(s, "s3") || strings.Contains(s, "public") ||
+				strings.Contains(s, "ckv_aws")
 		}, "public S3 bucket"},
+		{"osv-scanner", func(s string) bool {
+			return strings.Contains(s, "lodash") || strings.Contains(s, "ghsa") ||
+				strings.Contains(s, "cve-")
+		}, "lodash CVE in package-lock.json"},
+		{"trivy", func(s string) bool {
+			return strings.Contains(s, "lodash") || strings.Contains(s, "cve-")
+		}, "lodash vulnerability"},
+		{"poutine", func(s string) bool {
+			return strings.Contains(s, "unpinned") || strings.Contains(s, "pull_request") ||
+				strings.Contains(s, "injection") || strings.Contains(s, "dangerous")
+		}, "workflow supply-chain risk"},
 	}
+}
 
-	for _, tc := range checks {
-		if count := countByTool(report.Findings, tc.tool); count == 0 {
+// assertScannerFindings verifies each scanner produced an expected finding.
+func assertScannerFindings(t *testing.T, findings []normalizer.Finding) {
+	t.Helper()
+	for _, tc := range scannerChecks() {
+		if count := countByTool(findings, tc.tool); count == 0 {
 			t.Errorf("expected at least 1 %s finding (%s), got 0", tc.tool, tc.desc)
 			continue
 		}
-		if !hasFindingMatching(report.Findings, tc.tool, tc.matches) {
+		if !hasFindingMatching(findings, tc.tool, tc.matches) {
 			t.Errorf("expected %s finding matching %q", tc.tool, tc.desc)
 		}
 	}
+}
+
+// TestFullScan runs Muninn against the fixture repo and verifies known
+// vulnerabilities are detected end-to-end.
+func TestFullScan(t *testing.T) {
+	requireScanners(t)
+
+	res := runMuninn(t, append(baseArgs(t), "--output", "json")...)
+	report := readJSONReport(t, res)
+
+	if res.ExitCode != 0 && res.ExitCode != 1 {
+		t.Fatalf("muninn exit code = %d, want 0 or 1 (fail-on may trigger)", res.ExitCode)
+	}
+
+	if report.Summary.Total <= 8 {
+		t.Errorf("summary.total = %d, want > 8", report.Summary.Total)
+	}
+
+	assertScannerFindings(t, report.Findings)
 }
 
 // TestFullScan_JSONOutput verifies the JSON report structure and fingerprints.
 func TestFullScan_JSONOutput(t *testing.T) {
 	requireScanners(t)
 
-	res := runMuninn(t, append(baseArgs(), "--format", "json")...)
+	res := runMuninn(t, append(baseArgs(t), "--format", "json")...)
 	report := readJSONReport(t, res)
 
 	if report.Summary.Total <= 0 {
@@ -312,7 +376,7 @@ func TestFullScan_JSONOutput(t *testing.T) {
 func TestFullScan_SARIFOutput(t *testing.T) {
 	requireScanners(t)
 
-	res := runMuninn(t, append(baseArgs(), "--format", "sarif")...)
+	res := runMuninn(t, append(baseArgs(t), "--format", "sarif")...)
 	doc := readSARIFReport(t, res)
 
 	if doc.Version != "2.1.0" {
@@ -336,7 +400,7 @@ func TestFullScan_SARIFOutput(t *testing.T) {
 func TestFullScan_FailOnCritical(t *testing.T) {
 	requireScanners(t)
 
-	res := runMuninn(t, append(baseArgs(), "--output", "json", "--fail-on", "critical")...)
+	res := runMuninn(t, append(baseArgs(t), "--output", "json", "--fail-on", "critical")...)
 	if res.ExitCode == 0 {
 		t.Fatal("muninn exit code = 0, want non-zero for --fail-on critical")
 	}
@@ -347,7 +411,7 @@ func TestFullScan_FailOnCritical(t *testing.T) {
 func TestFullScan_FailOnInfo(t *testing.T) {
 	requireScanners(t)
 
-	res := runMuninn(t, append(baseArgs(), "--output", "json", "--fail-on", "info")...)
+	res := runMuninn(t, append(baseArgs(t), "--output", "json", "--fail-on", "info")...)
 	if res.ExitCode == 0 {
 		t.Fatal("muninn exit code = 0, want non-zero for --fail-on info")
 	}

@@ -8,7 +8,8 @@ configuration files used to verify Muninn's scanner integrations.
 | File | Purpose | Scanner tested |
 |------|---------|----------------|
 | `secrets.env` | Fake credentials (SendGrid API key) | gitleaks |
-| `.github/workflows/vulnerable.yml` | Dangerous workflow patterns | zizmor, actionlint |
+| `package-lock.json` | Vulnerable lodash dependency | osv-scanner, trivy |
+| `.github/workflows/vulnerable.yml` | Dangerous workflow patterns | zizmor, actionlint, poutine |
 | `src/app.py` | Insecure code patterns | semgrep |
 | `terraform/main.tf` | IaC misconfigurations | checkov |
 
