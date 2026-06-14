@@ -15,6 +15,7 @@
 //	--target    path to repository root to scan (default: ., env: SCAN_TARGET)
 //	--fail-on   minimum severity to exit non-zero (default: critical, env: FAIL_ON)
 //	--output    comma-separated output formats: json,sarif,comment (env: OUTPUT_FORMATS)
+//	--version   print version and exit
 package main
 
 import (
@@ -38,6 +39,7 @@ import (
 const (
 	sarifOutputFile = localSARIFPath
 	jsonOutputFile  = localJSONPath
+	version         = "0.1.0"
 )
 
 func main() {
@@ -54,10 +56,16 @@ func run() int {
 	failOn := fs.String("fail-on", envOr("FAIL_ON", ""), "minimum severity to fail the check (overrides config)")
 	output := fs.String("output", envOr("OUTPUT_FORMATS", "json"), "comma-separated output formats: json,sarif,comment")
 	format := fs.String("format", "", "output format (sarif, json, comment) — overrides --output when set")
+	showVersion := fs.Bool("version", false, "print version and exit")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "muninn: %v\n", err)
 		return 2
+	}
+
+	if *showVersion {
+		fmt.Printf("muninn %s\n", version)
+		return 0
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

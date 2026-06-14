@@ -67,7 +67,7 @@ RUN curl -fsSL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib
          | sh -s -- -b /usr/local/bin
 
 # ── builder: compile Muninn (static, runs on any libc) ───────────────────────
-FROM golang:1.26-alpine AS builder
+FROM golang:1.26.4-alpine AS builder
 WORKDIR /src
 COPY go.mod ./
 RUN go mod download
@@ -98,6 +98,16 @@ COPY --from=tools /usr/local/bin/trivy       /usr/local/bin/trivy
 COPY --from=builder /muninn /usr/local/bin/muninn
 
 WORKDIR /github/workspace
+
+# Security: run as non-root (UID 1001 matches GitHub-hosted ubuntu runners).
+RUN groupadd -g 1001 muninn && \
+    useradd -u 1001 -g muninn -m -d /home/muninn -s /usr/sbin/nologin muninn && \
+    chown muninn:muninn /github/workspace
+
+USER muninn
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s \
+  CMD ["/usr/local/bin/muninn", "--version"]
 
 LABEL org.opencontainers.image.title="Muninn Security Scanner" \
       org.opencontainers.image.description="All-in-one security scanner for GitHub Actions pipelines" \
