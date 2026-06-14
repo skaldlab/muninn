@@ -1,0 +1,19 @@
+#!/bin/sh
+# Muninn pre-commit: fast checks aligned with CI (format + vet).
+set -eu
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-commit: checking gofmt..."
+unformatted=$(gofmt -l .)
+if [ -n "$unformatted" ]; then
+	echo "The following files are not formatted:"
+	echo "$unformatted"
+	echo "Run: make fmt"
+	exit 1
+fi
+
+echo "pre-commit: running go vet..."
+go vet ./...
+
+echo "pre-commit: ok"

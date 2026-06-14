@@ -1,4 +1,4 @@
-.PHONY: test coverage coverage-html fmt lint build check
+.PHONY: test coverage coverage-html fmt lint build check hooks
 
 test:
 	go test -race ./...
@@ -23,3 +23,8 @@ build:
 	go build ./...
 
 check: lint test coverage
+
+# Install Git hooks from .githooks/ (run once per clone).
+hooks:
+	git config core.hooksPath .githooks
+	@echo "Git hooks installed from .githooks/ (core.hooksPath)"
