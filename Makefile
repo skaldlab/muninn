@@ -27,4 +27,5 @@ check: lint test coverage
 # Install Git hooks from .githooks/ (run once per clone).
 hooks:
 	git config core.hooksPath .githooks
-	@echo "Git hooks installed from .githooks/ (core.hooksPath)"
+	chmod +x .githooks/pre-commit .githooks/pre-push
+	@echo "Git hooks installed from .githooks/ (pre-commit + pre-push)"

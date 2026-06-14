@@ -1,0 +1,27 @@
+#!/bin/sh
+# Muninn pre-push: compile and unit-test before code reaches origin.
+#
+# Bypass:  SKIP_PRE_PUSH=1 git push ...
+# Install:  make hooks
+#
+# CI still runs race detection, coverage gates, integration tests, and security
+# scans. This hook targets ~30-90s on typical hardware.
+set -eu
+
+HOOK_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${HOOK_DIR}/lib/common.sh"
+
+if hook_skip SKIP_PRE_PUSH; then
+	exit 0
+fi
+
+hook_setup || exit 1
+
+echo "pre-push: go build ./..."
+go build ./...
+
+echo "pre-push: go test ./..."
+go test ./...
+
+echo "pre-push: ok"

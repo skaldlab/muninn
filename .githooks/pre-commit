@@ -1,35 +1,25 @@
 #!/bin/sh
-# Muninn pre-commit: format and vet staged Go changes (fast subset of CI).
+# Muninn pre-commit: fast format + vet on staged Go changes.
 #
 # Bypass:  SKIP_PRE_COMMIT=1 git commit ...
 # Install:  make hooks
 set -eu
 
-if [ "${SKIP_PRE_COMMIT:-}" = "1" ]; then
+HOOK_DIR=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+# shellcheck source=lib/common.sh
+. "${HOOK_DIR}/lib/common.sh"
+
+if hook_skip SKIP_PRE_COMMIT; then
 	exit 0
 fi
 
-root=$(git rev-parse --show-toplevel) || exit 1
-git_dir=$(git rev-parse --git-dir) || exit 1
+hook_setup || exit 1
 
-# Merge commits are validated by CI; keep commits fast.
-if [ -f "${git_dir}/MERGE_HEAD" ]; then
-	exit 0
-fi
+staged_list=$(hook_mktemp muninn-pre-commit-staged)
+vet_list=$(hook_mktemp muninn-pre-commit-vet)
+trap 'rm -f "$staged_list" "$vet_list" "${vet_list}.uniq"' EXIT INT HUP TERM
 
-cd "$root"
-export GOTOOLCHAIN="${GOTOOLCHAIN:-local}"
-
-if ! command -v go >/dev/null 2>&1; then
-	echo "pre-commit: go not found on PATH" >&2
-	exit 1
-fi
-
-staged_list=$(mktemp)
-vet_list=$(mktemp)
-trap 'rm -f "$staged_list" "$vet_list"' EXIT INT HUP TERM
-
-git diff --cached --name-only --diff-filter=ACMRTUXB -- '*.go' >"$staged_list"
+staged_go_files >"$staged_list"
 
 if [ ! -s "$staged_list" ]; then
 	exit 0
@@ -37,26 +27,23 @@ fi
 
 echo "pre-commit: checking staged Go files..."
 
-# Format only staged files, then re-stage fixes.
-needs_fmt=0
+# Batch gofmt check (one process) then fix and re-stage.
+unformatted=
+# shellcheck disable=SC2046
+unformatted=$(gofmt -l $(tr '\n' ' ' <"$staged_list") 2>/dev/null || true)
+if [ -n "$unformatted" ]; then
+	echo "pre-commit: formatting:"
+	printf '%s\n' "$unformatted" | sed 's/^/  /'
+	# shellcheck disable=SC2086
+	gofmt -w $unformatted
+	# shellcheck disable=SC2086
+	git add -- $unformatted
+fi
+
+# Vet only packages touched by existing staged files.
 while IFS= read -r file; do
 	[ -n "$file" ] || continue
 	[ -f "$file" ] || continue
-	if [ -n "$(gofmt -l "$file")" ]; then
-		needs_fmt=1
-		printf '  %s\n' "$file"
-		gofmt -w "$file"
-		git add -- "$file"
-	fi
-done <"$staged_list"
-
-if [ "$needs_fmt" -eq 1 ]; then
-	echo "pre-commit: gofmt applied to staged files (re-staged automatically)"
-fi
-
-# Vet only packages touched by staged changes.
-while IFS= read -r file; do
-	[ -n "$file" ] || continue
 	case "$file" in
 	integration/*)
 		printf '%s\n' '-tags integration ./integration/...' >>"$vet_list"
