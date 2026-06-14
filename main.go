@@ -34,12 +34,12 @@ import (
 	"github.com/skaldlab/muninn/internal/normalizer"
 	"github.com/skaldlab/muninn/internal/reporter"
 	"github.com/skaldlab/muninn/internal/scanner"
+	"github.com/skaldlab/muninn/internal/version"
 )
 
 const (
 	sarifOutputFile = localSARIFPath
 	jsonOutputFile  = localJSONPath
-	version         = "0.1.0"
 )
 
 func main() {
@@ -64,7 +64,7 @@ func run() int {
 	}
 
 	if *showVersion {
-		fmt.Printf("muninn %s\n", version)
+		fmt.Printf("muninn %s\n", version.Version)
 		return 0
 	}
 

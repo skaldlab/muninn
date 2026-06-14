@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/skaldlab/muninn/internal/normalizer"
+	"github.com/skaldlab/muninn/internal/version"
 )
 
 // SARIF outputs findings in the Static Analysis Results Interchange Format
@@ -37,7 +38,7 @@ func (s *SARIF) buildDoc(findings []normalizer.Finding) sarifDoc {
 		Results: make([]sarifResult, 0, len(active)),
 	}
 	run.Tool.Driver.Name = "Muninn"
-	run.Tool.Driver.Version = "0.1.0"
+	run.Tool.Driver.Version = version.Version
 	run.Tool.Driver.InformationURI = "https://github.com/skaldlab/muninn"
 	run.Tool.Driver.Rules = s.buildRules(active)
 	for _, f := range active {
