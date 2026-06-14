@@ -12,7 +12,11 @@ import (
 const (
 	commentMaxDesc       = 300
 	commentMaxPerSection = 10
-	commentFooter        = "\n*🪶 Powered by [Muninn](https://github.com/skaldlab/muninn) · [Skald Lab](https://skaldlab.dev)*"
+	// CommentIcon is the Muninn brand mark (Odin's raven); Unicode has no raven emoji.
+	CommentIcon   = "🐦‍⬛"
+	commentTitle  = "Muninn Security Scan"
+	commentHeader = "## " + CommentIcon + " " + commentTitle + "\n\n"
+	commentFooter = "\n*" + CommentIcon + " Powered by [Muninn](https://github.com/skaldlab/muninn) · [Skald Lab](https://skaldlab.dev)*"
 	// CommentMarker is embedded in PR comments so Muninn can update the same thread.
 	CommentMarker = "<!-- muninn:scan -->"
 )
@@ -28,7 +32,7 @@ func (c *Comment) Write(_ context.Context, w io.Writer, findings []normalizer.Fi
 	if len(visible) == 0 {
 		return writeEmptyComment(w)
 	}
-	if _, err := fmt.Fprint(w, CommentMarker+"\n## 🪶 Muninn Security Scan\n\n"); err != nil {
+	if _, err := fmt.Fprint(w, CommentMarker+"\n"+commentHeader); err != nil {
 		return fmt.Errorf("comment header: %w", err)
 	}
 	if err := writeSummaryTable(w, visible); err != nil {
@@ -53,7 +57,7 @@ func visibleCommentFindings(findings []normalizer.Finding) []normalizer.Finding 
 }
 
 func writeEmptyComment(w io.Writer) error {
-	const msg = CommentMarker + "\n## 🪶 Muninn Security Scan\n\n✅ No security issues found.\n\n"
+	const msg = CommentMarker + "\n" + commentHeader + "✅ No security issues found.\n\n"
 	if _, err := fmt.Fprint(w, msg); err != nil {
 		return fmt.Errorf("comment empty message: %w", err)
 	}

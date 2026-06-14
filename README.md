@@ -225,4 +225,4 @@ For commercial licensing or enterprise support, contact [hello@skaldlab.dev](mai
 
 ---
 
-Built with 🪶 by [Skald Lab](https://skaldlab.dev)
+Built with 🐦‍⬛ by [Skald Lab](https://skaldlab.dev)

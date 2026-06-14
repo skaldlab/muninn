@@ -14,7 +14,7 @@ import (
 	"github.com/skaldlab/muninn/internal/reporter"
 )
 
-const muninnCommentLegacyHeader = "## 🪶 Muninn Security Scan"
+const muninnCommentLegacyHeader = "Muninn Security Scan"
 
 // pullRequestEvent holds the fields Muninn reads from GITHUB_EVENT_PATH.
 type pullRequestEvent struct {
