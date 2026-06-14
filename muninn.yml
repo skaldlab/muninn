@@ -28,6 +28,5 @@ suppressions:
   - id: testdata/fixture-repo
     reason: >
       Intentional vulnerable fixtures for integration testing.
-      These files contain fake secrets and deliberately insecure
-      patterns to verify Muninn's detection capabilities.
+      All secrets are fake, all vulnerabilities are deliberate.
     expires: ""
