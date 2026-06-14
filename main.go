@@ -19,7 +19,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
@@ -52,6 +51,7 @@ func run() int {
 	target := fs.String("target", envOr("SCAN_TARGET", "."), "path to repository root to scan")
 	failOn := fs.String("fail-on", envOr("FAIL_ON", ""), "minimum severity to fail the check (overrides config)")
 	output := fs.String("output", envOr("OUTPUT_FORMATS", "json"), "comma-separated output formats: json,sarif,comment")
+	format := fs.String("format", "", "output format (sarif, json, comment) — overrides --output when set")
 
 	if err := fs.Parse(os.Args[1:]); err != nil {
 		fmt.Fprintf(os.Stderr, "muninn: %v\n", err)
@@ -70,7 +70,12 @@ func run() int {
 		cfg.FailOn = *failOn
 	}
 
-	if err := scan(ctx, cfg, *target, *output); err != nil {
+	selectedFormats := *output
+	if *format != "" {
+		selectedFormats = *format
+	}
+
+	if err := scan(ctx, cfg, *target, selectedFormats); err != nil {
 		fmt.Fprintf(os.Stderr, "muninn: %v\n", err)
 		return 1
 	}
@@ -89,7 +94,7 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 	}
 
 	for _, format := range splitFormats(outputFormats) {
-		if err := writeReport(format, findings); err != nil {
+		if err := writeReport(ctx, format, findings); err != nil {
 			return err
 		}
 	}
@@ -136,7 +141,7 @@ func runScanner(ctx context.Context, sc scanner.Scanner, target string, cfg *con
 
 // writeReport writes findings in a single output format. Unknown formats are
 // ignored so a typo in the --output flag does not abort the run.
-func writeReport(format string, findings []normalizer.Finding) error {
+func writeReport(ctx context.Context, format string, findings []normalizer.Finding) error {
 	switch format {
 	case "sarif":
 		if err := writeSARIF(sarifOutputFile, findings); err != nil {
@@ -149,8 +154,10 @@ func writeReport(format string, findings []normalizer.Finding) error {
 		}
 		fmt.Println("muninn: wrote " + jsonOutputFile)
 	case "comment":
-		// TODO: post GitHub PR comment via GitHub API
-		fmt.Println("muninn: PR comment reporter not yet implemented")
+		rep := &reporter.Comment{}
+		if err := rep.Write(ctx, os.Stdout, findings); err != nil {
+			return fmt.Errorf("writing comment output: %w", err)
+		}
 	}
 	return nil
 }
@@ -193,72 +200,13 @@ func severityRank(s normalizer.Severity) int {
 	}
 }
 
-// sarifLocation, sarifResult, sarifRun, and sarifDoc model the subset of the
-// SARIF 2.1.0 schema that Muninn emits.
-type sarifLocation struct {
-	ArtifactLocation struct {
-		URI   string `json:"uri"`
-		Index int    `json:"index"`
-	} `json:"artifactLocation"`
-	Region struct {
-		StartLine   int `json:"startLine"`
-		StartColumn int `json:"startColumn,omitempty"`
-	} `json:"region"`
-}
-
-type sarifResult struct {
-	RuleID  string `json:"ruleId"`
-	Message struct {
-		Text string `json:"text"`
-	} `json:"message"`
-	Locations []struct {
-		PhysicalLocation sarifLocation `json:"physicalLocation"`
-	} `json:"locations"`
-}
-
-type sarifRun struct {
-	Tool struct {
-		Driver struct {
-			Name           string `json:"name"`
-			InformationURI string `json:"informationUri"`
-			Rules          []any  `json:"rules"`
-		} `json:"driver"`
-	} `json:"tool"`
-	Results []sarifResult `json:"results"`
-}
-
-type sarifDoc struct {
-	Schema  string     `json:"$schema"`
-	Version string     `json:"version"`
-	Runs    []sarifRun `json:"runs"`
-}
-
-// writeSARIF writes a SARIF 2.1.0 document to path.
+// writeSARIF writes a SARIF 2.1.0 document to path via the SARIF reporter.
 // When findings is empty, a valid skeleton with zero results is written so that
 // the github/codeql-action/upload-sarif step does not error on a missing file.
 func writeSARIF(path string, findings []normalizer.Finding) error {
-	// GitHub's upload-sarif endpoint requires at least one run object, even when
-	// there are zero findings. Always emit a single Muninn run with an empty (but
-	// non-null) results array.
-	run := sarifRun{Results: []sarifResult{}}
-	run.Tool.Driver.Name = "Muninn"
-	run.Tool.Driver.InformationURI = "https://github.com/skaldlab/muninn"
-	run.Tool.Driver.Rules = []any{}
-
-	// TODO: append a sarifResult per finding once scanner implementations land.
-	_ = findings
-
-	doc := sarifDoc{
-		Schema:  "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
-		Version: "2.1.0",
-		Runs:    []sarifRun{run},
-	}
-
-	data, err := json.MarshalIndent(doc, "", "  ")
-	if err != nil {
-		return fmt.Errorf("marshalling SARIF: %w", err)
-	}
-	return os.WriteFile(path, data, 0644)
+	return writeToFile(path, func(w io.Writer) error {
+		return (&reporter.SARIF{}).Write(context.Background(), w, findings)
+	})
 }
 
 // writeJSON writes findings as a JSON array to path using the JSON reporter.
