@@ -165,6 +165,23 @@ go build ./...
 go test ./...
 ```
 
+### Running tests
+
+#### Unit tests
+
+```bash
+make test
+```
+
+#### Integration tests (requires scanner binaries)
+
+Integration tests are tagged with `integration` and are not run by `go test ./...`.
+They require `gitleaks`, `zizmor`, `actionlint`, `semgrep`, and `checkov` on `PATH`.
+
+```bash
+go test -tags integration ./integration/...
+```
+
 ---
 
 ## License
