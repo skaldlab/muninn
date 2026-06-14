@@ -1,0 +1,10 @@
+name: Screenshot Demo (Vulnerable)
+on:
+  pull_request_target:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Echo PR title
+        run: echo "${{ github.event.pull_request.title }}"
