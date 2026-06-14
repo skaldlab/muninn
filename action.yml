@@ -1,5 +1,8 @@
 name: 'Muninn Security Scanner'
-description: 'All-in-one security scanner for your codebase and CI/CD pipelines by Skald Lab'
+description: >
+  All-in-one security scanner by Skald Lab: secrets, SAST,
+  CI/CD pipeline security, supply chain, dependencies,
+  containers, and IaC — in one GitHub Action.
 author: 'Skald Lab'
 
 branding:
