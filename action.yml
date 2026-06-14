@@ -1,6 +1,6 @@
 name: 'Muninn Security Scanner'
-description: 'All-in-one security scanner for your codebase and CI/CD pipelines by Skaldlab'
-author: 'Skaldlab'
+description: 'All-in-one security scanner for your codebase and CI/CD pipelines by Skald Lab'
+author: 'Skald Lab'
 
 branding:
   icon: 'shield'

@@ -3,7 +3,7 @@
 > *Huginn and Muninn fly each day over the spacious earth. I fear for Huginn, that he come not back, yet more anxious am I for Muninn.*
 > — Grímnismál, the Prose Edda
 
-**Muninn** (Old Norse: *Memory*) is an open-source security scanner for GitHub Actions pipelines, built by [Skaldlab](https://github.com/skaldlab). Named after Odin's raven of Memory, Muninn remembers every vulnerability it has ever seen — and reports them all back.
+**Muninn** (Old Norse: *Memory*) is an open-source security scanner for GitHub Actions pipelines, built by [Skald Lab](https://github.com/skaldlab). Named after Odin's raven of Memory, Muninn remembers every vulnerability it has ever seen — and reports them all back.
 
 Muninn orchestrates **8 best-in-class open-source scanners**, normalises their output into a single finding schema, and delivers results as GitHub PR comments, SARIF uploads, and structured JSON — with a single `uses:` line.
 
@@ -192,4 +192,4 @@ This means you are free to use, modify, and distribute Muninn — including runn
 
 ---
 
-*Built with ❤️ by [Skaldlab](https://github.com/skaldlab)*
+*Built with ❤️ by [Skald Lab](https://github.com/skaldlab)*
