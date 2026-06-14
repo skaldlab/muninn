@@ -14,11 +14,18 @@ import (
 	"github.com/skaldlab/muninn/internal/reporter"
 )
 
+const muninnCommentLegacyHeader = "## 🪶 Muninn Security Scan"
+
 // pullRequestEvent holds the fields Muninn reads from GITHUB_EVENT_PATH.
 type pullRequestEvent struct {
 	PullRequest struct {
 		Number int `json:"number"`
 	} `json:"pull_request"`
+}
+
+type issueComment struct {
+	ID   int64  `json:"id"`
+	Body string `json:"body"`
 }
 
 // renderComment formats findings as Markdown for a GitHub PR comment.
@@ -58,7 +65,7 @@ func postPRCommentHTTP(ctx context.Context, comment string, client *http.Client)
 		fmt.Fprintln(os.Stderr, "muninn: warning: GITHUB_REPOSITORY not set, skipping PR comment")
 		return nil
 	}
-	if err := createIssueComment(ctx, client, apiBaseURL(), repo, token, number, comment); err != nil {
+	if err := upsertIssueComment(ctx, client, apiBaseURL(), repo, token, number, comment); err != nil {
 		fmt.Fprintf(os.Stderr, "muninn: warning: failed to post PR comment: %v\n", err)
 	}
 	return nil
@@ -92,20 +99,71 @@ func pullRequestNumber() (int, error) {
 	return event.PullRequest.Number, nil
 }
 
+// upsertIssueComment updates an existing Muninn PR comment or creates a new one.
+func upsertIssueComment(ctx context.Context, client *http.Client, apiBase, repo, token string, number int, body string) error {
+	comments, err := listIssueComments(ctx, client, apiBase, repo, token, number)
+	if err != nil {
+		return err
+	}
+	for _, c := range comments {
+		if isMuninnComment(c.Body) {
+			return updateIssueComment(ctx, client, apiBase, repo, token, c.ID, body)
+		}
+	}
+	return createIssueComment(ctx, client, apiBase, repo, token, number, body)
+}
+
+func isMuninnComment(body string) bool {
+	return strings.Contains(body, reporter.CommentMarker) ||
+		strings.Contains(body, muninnCommentLegacyHeader)
+}
+
+func listIssueComments(ctx context.Context, client *http.Client, apiBase, repo, token string, number int) ([]issueComment, error) {
+	url := fmt.Sprintf("%s/repos/%s/issues/%d/comments?per_page=100", apiBase, repo, number)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("building list comments request: %w", err)
+	}
+	setGitHubHeaders(req, token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("listing comments: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		msg, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		return nil, fmt.Errorf("GitHub API status %d: %s", resp.StatusCode, strings.TrimSpace(string(msg)))
+	}
+
+	var comments []issueComment
+	if err := json.NewDecoder(resp.Body).Decode(&comments); err != nil {
+		return nil, fmt.Errorf("decoding comments: %w", err)
+	}
+	return comments, nil
+}
+
+func updateIssueComment(ctx context.Context, client *http.Client, apiBase, repo, token string, id int64, body string) error {
+	url := fmt.Sprintf("%s/repos/%s/issues/comments/%d", apiBase, repo, id)
+	return sendIssueComment(ctx, client, http.MethodPatch, url, token, body)
+}
+
 // createIssueComment POSTs a comment body to the GitHub issues comments API.
 func createIssueComment(ctx context.Context, client *http.Client, apiBase, repo, token string, number int, body string) error {
 	url := fmt.Sprintf("%s/repos/%s/issues/%d/comments", apiBase, repo, number)
+	return sendIssueComment(ctx, client, http.MethodPost, url, token, body)
+}
+
+func sendIssueComment(ctx context.Context, client *http.Client, method, url, token, body string) error {
 	payload, err := json.Marshal(map[string]string{"body": body})
 	if err != nil {
 		return fmt.Errorf("encoding comment body: %w", err)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(payload))
+	req, err := http.NewRequestWithContext(ctx, method, url, bytes.NewReader(payload))
 	if err != nil {
 		return fmt.Errorf("building request: %w", err)
 	}
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("Content-Type", "application/json")
+	setGitHubHeaders(req, token)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -117,4 +175,10 @@ func createIssueComment(ctx context.Context, client *http.Client, apiBase, repo,
 		return fmt.Errorf("GitHub API status %d: %s", resp.StatusCode, strings.TrimSpace(string(msg)))
 	}
 	return nil
+}
+
+func setGitHubHeaders(req *http.Request, token string) {
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
 }

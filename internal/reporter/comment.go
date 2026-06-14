@@ -13,6 +13,8 @@ const (
 	commentMaxDesc       = 300
 	commentMaxPerSection = 10
 	commentFooter        = "\n*🪶 Powered by [Muninn](https://github.com/skaldlab/muninn) · [Skald Lab](https://skaldlab.dev)*"
+	// CommentMarker is embedded in PR comments so Muninn can update the same thread.
+	CommentMarker = "<!-- muninn:scan -->"
 )
 
 // Comment formats findings as Markdown suitable for posting as a GitHub PR
@@ -26,7 +28,7 @@ func (c *Comment) Write(_ context.Context, w io.Writer, findings []normalizer.Fi
 	if len(visible) == 0 {
 		return writeEmptyComment(w)
 	}
-	if _, err := fmt.Fprint(w, "## 🪶 Muninn Security Scan\n\n"); err != nil {
+	if _, err := fmt.Fprint(w, CommentMarker+"\n## 🪶 Muninn Security Scan\n\n"); err != nil {
 		return fmt.Errorf("comment header: %w", err)
 	}
 	if err := writeSummaryTable(w, visible); err != nil {
@@ -51,7 +53,7 @@ func visibleCommentFindings(findings []normalizer.Finding) []normalizer.Finding 
 }
 
 func writeEmptyComment(w io.Writer) error {
-	const msg = "## 🪶 Muninn Security Scan\n\n✅ No security issues found.\n\n"
+	const msg = CommentMarker + "\n## 🪶 Muninn Security Scan\n\n✅ No security issues found.\n\n"
 	if _, err := fmt.Fprint(w, msg); err != nil {
 		return fmt.Errorf("comment empty message: %w", err)
 	}

@@ -29,13 +29,25 @@ func TestPostPRComment_MissingToken(t *testing.T) {
 
 func TestPostPRComment_Success(t *testing.T) {
 	var gotMethod, gotPath, gotAuth, gotBody string
+	requests := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotMethod = r.Method
-		gotPath = r.URL.Path
-		gotAuth = r.Header.Get("Authorization")
-		body, _ := io.ReadAll(r.Body)
-		gotBody = string(body)
-		w.WriteHeader(http.StatusCreated)
+		requests++
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/comments"):
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("[]"))
+			return
+		case r.Method == http.MethodPost:
+			gotMethod = r.Method
+			gotPath = r.URL.Path
+			gotAuth = r.Header.Get("Authorization")
+			body, _ := io.ReadAll(r.Body)
+			gotBody = string(body)
+			w.WriteHeader(http.StatusCreated)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
 	}))
 	defer srv.Close()
 
@@ -52,6 +64,9 @@ func TestPostPRComment_Success(t *testing.T) {
 	if err := postPRCommentHTTP(context.Background(), "scan results", srv.Client()); err != nil {
 		t.Fatalf("postPRCommentHTTP() = %v", err)
 	}
+	if requests != 2 {
+		t.Fatalf("requests = %d, want 2 (list then create)", requests)
+	}
 	if gotMethod != http.MethodPost {
 		t.Errorf("method = %q, want POST", gotMethod)
 	}
@@ -63,6 +78,50 @@ func TestPostPRComment_Success(t *testing.T) {
 	}
 	if !strings.Contains(gotBody, "scan results") {
 		t.Errorf("body = %q, want comment text", gotBody)
+	}
+}
+
+func TestPostPRComment_UpdatesExisting(t *testing.T) {
+	var gotMethod, gotPath, gotBody string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && strings.HasSuffix(r.URL.Path, "/comments"):
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`[{"id":123,"body":"## 🪶 Muninn Security Scan\n\nold results"}]`))
+		case r.Method == http.MethodPatch:
+			gotMethod = r.Method
+			gotPath = r.URL.Path
+			body, _ := io.ReadAll(r.Body)
+			gotBody = string(body)
+			w.WriteHeader(http.StatusOK)
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	defer srv.Close()
+
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	t.Setenv("GITHUB_TOKEN", "test-token")
+	t.Setenv("GITHUB_REPOSITORY", "skaldlab/muninn")
+	t.Setenv("GITHUB_API_URL", srv.URL)
+	eventFile := filepath.Join(t.TempDir(), "event.json")
+	if err := os.WriteFile(eventFile, []byte(`{"pull_request":{"number":42}}`), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	t.Setenv("GITHUB_EVENT_PATH", eventFile)
+
+	if err := postPRCommentHTTP(context.Background(), "updated results", srv.Client()); err != nil {
+		t.Fatalf("postPRCommentHTTP() = %v", err)
+	}
+	if gotMethod != http.MethodPatch {
+		t.Errorf("method = %q, want PATCH", gotMethod)
+	}
+	if gotPath != "/repos/skaldlab/muninn/issues/comments/123" {
+		t.Errorf("path = %q", gotPath)
+	}
+	if !strings.Contains(gotBody, "updated results") {
+		t.Errorf("body = %q, want updated comment text", gotBody)
 	}
 }
 
