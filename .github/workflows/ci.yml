@@ -12,6 +12,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
@@ -43,6 +45,8 @@ jobs:
     needs: build-and-test
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
@@ -51,28 +55,7 @@ jobs:
           cache: true
 
       - name: Install scanner binaries
-        run: |
-          set -euo pipefail
-
-          gh_ver() {
-            curl -fsSLI -o /dev/null -w "%{url_effective}" \
-              "https://github.com/$1/releases/latest" | sed 's|.*/tag/v||'
-          }
-
-          ARCH=$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')
-          VER=$(gh_ver gitleaks/gitleaks)
-          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${VER}/gitleaks_${VER}_linux_${ARCH}.tar.gz" \
-            | tar -xz -C /usr/local/bin gitleaks
-          chmod +x /usr/local/bin/gitleaks
-
-          ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-          VER=$(gh_ver rhysd/actionlint)
-          curl -fsSL "https://github.com/rhysd/actionlint/releases/download/v${VER}/actionlint_${VER}_linux_${ARCH}.tar.gz" \
-            | tar -xz -C /usr/local/bin actionlint
-          chmod +x /usr/local/bin/actionlint
-
-          pip install --user semgrep zizmor checkov
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        run: bash .github/scripts/install-integration-scanners.sh
 
       - name: Run integration tests
         run: go test -tags integration -v ./integration/...
@@ -83,6 +66,8 @@ jobs:
     needs: build-and-test
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
@@ -98,16 +83,12 @@ jobs:
 
       - name: Check coverage threshold
         run: |
-          COVERAGE=$(go tool cover \
-            -func=coverage.out | \
-            grep total | \
-            awk '{print $3}' | \
-            sed 's/%//')
+          COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
           echo "Total coverage: ${COVERAGE}%"
-          if (( $(echo "$COVERAGE < 90" | bc -l) )); then
+          awk -v cov="${COVERAGE}" 'BEGIN { if (cov+0 >= 90) exit 0; exit 1 }' || {
             echo "Coverage ${COVERAGE}% is below 90% threshold"
             exit 1
-          fi
+          }
 
       - name: Upload coverage report
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -131,6 +112,8 @@ jobs:
       pull-requests: write     # for posting PR review comments
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Run Muninn
         uses: ./
