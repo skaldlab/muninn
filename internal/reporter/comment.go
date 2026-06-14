@@ -57,7 +57,10 @@ func writeSummaryTable(w io.Writer, findings []normalizer.Finding) error {
 	for _, f := range findings {
 		counts[f.Severity]++
 	}
-	rows := []struct{ label string; sev normalizer.Severity }{
+	rows := []struct {
+		label string
+		sev   normalizer.Severity
+	}{
 		{"🔴 Critical", normalizer.SeverityCritical},
 		{"🟠 High", normalizer.SeverityHigh},
 		{"🟡 Medium", normalizer.SeverityMedium},

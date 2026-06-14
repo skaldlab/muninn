@@ -156,11 +156,11 @@ type sarifText struct {
 }
 
 type sarifResult struct {
-	RuleID       string            `json:"ruleId"`
-	Level        string            `json:"level"`
-	Message      sarifText         `json:"message"`
-	Locations    []sarifLocation   `json:"locations"`
-	Fingerprints map[string]string `json:"fingerprints,omitempty"`
+	RuleID       string             `json:"ruleId"`
+	Level        string             `json:"level"`
+	Message      sarifText          `json:"message"`
+	Locations    []sarifLocation    `json:"locations"`
+	Fingerprints map[string]string  `json:"fingerprints,omitempty"`
 	Suppressions []sarifSuppression `json:"suppressions"`
 }
 
