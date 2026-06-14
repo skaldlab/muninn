@@ -3,20 +3,24 @@ package reporter
 import (
 	"bytes"
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
-
-// Comment.Write is currently a stub that returns nil regardless of input.
-// These tests document expected stub behavior and will need updating when
-// the full Markdown implementation lands.
 
 func TestCommentReporter_EmptyFindings(t *testing.T) {
 	var buf bytes.Buffer
 	r := &Comment{}
 	if err := r.Write(context.Background(), &buf, []normalizer.Finding{}); err != nil {
 		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "✅ No security issues found") {
+		t.Errorf("empty output missing clean-scan message, got:\n%s", out)
+	}
+	if !strings.Contains(out, commentFooter) {
+		t.Error("empty output missing footer")
 	}
 }
 
@@ -32,10 +36,22 @@ func TestCommentReporter_WithFindings(t *testing.T) {
 	if err := r.Write(context.Background(), &buf, findings); err != nil {
 		t.Fatalf("Write() unexpected error: %v", err)
 	}
+	out := buf.String()
+	if !strings.Contains(out, "🔴 Critical") {
+		t.Error("output missing critical section header")
+	}
+	if !strings.Contains(out, "🟠 High") {
+		t.Error("output missing high section header")
+	}
+	if !strings.Contains(out, "Exposed secret") {
+		t.Error("output missing critical finding title")
+	}
+	if !strings.Contains(out, commentFooter) {
+		t.Error("output missing footer")
+	}
 }
 
 func TestCommentReporter_GroupsBySeverity(t *testing.T) {
-	// Verify Write does not panic when findings span all severity levels.
 	findings := []normalizer.Finding{
 		{ID: "1", Severity: normalizer.SeverityLow, Fingerprint: "1"},
 		{ID: "2", Severity: normalizer.SeverityCritical, Fingerprint: "2"},
@@ -48,27 +64,58 @@ func TestCommentReporter_GroupsBySeverity(t *testing.T) {
 	if err := r.Write(context.Background(), &buf, findings); err != nil {
 		t.Fatalf("Write() unexpected error: %v", err)
 	}
+	out := buf.String()
+	// Critical must appear before High in output order.
+	critPos := strings.Index(out, "🔴 Critical")
+	highPos := strings.Index(out, "🟠 High")
+	if critPos < 0 || highPos < 0 || critPos > highPos {
+		t.Errorf("severity sections out of order: critical at %d, high at %d", critPos, highPos)
+	}
 }
 
 func TestCommentReporter_TruncatesLongDescription(t *testing.T) {
-	long := make([]byte, 300)
-	for i := range long {
-		long[i] = 'x'
-	}
+	// Use 301 bytes to trigger truncation (limit is 300).
+	long := strings.Repeat("x", 301)
 	f := normalizer.Finding{
 		ID: "z", Severity: normalizer.SeverityMedium,
-		Description: string(long), Fingerprint: "z",
+		Description: long, Fingerprint: "z",
 	}
 	var buf bytes.Buffer
 	r := &Comment{}
 	if err := r.Write(context.Background(), &buf, []normalizer.Finding{f}); err != nil {
 		t.Fatalf("Write() unexpected error: %v", err)
 	}
+	out := buf.String()
+	// The truncated description must end with "..." and not contain the full 301 chars.
+	if !strings.Contains(out, strings.Repeat("x", 300)+"...") {
+		t.Error("description was not truncated to 300 chars + ellipsis")
+	}
+	if strings.Contains(out, strings.Repeat("x", 301)) {
+		t.Error("full 301-char description should not appear in output")
+	}
+}
+
+func TestCommentReporter_SuppressedGroupsOmitted(t *testing.T) {
+	// A severity group that would otherwise appear should be absent if all
+	// findings in it are suppressed — unless non-suppressed siblings exist.
+	// Here: only a low finding; no medium findings at all — medium section absent.
+	findings := []normalizer.Finding{
+		{ID: "a", Severity: normalizer.SeverityLow, Fingerprint: "a"},
+	}
+	var buf bytes.Buffer
+	r := &Comment{}
+	if err := r.Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	if strings.Contains(out, "Medium Findings") {
+		t.Error("medium section should be absent when there are no medium findings")
+	}
 }
 
 func TestCommentReporter_WriterError(t *testing.T) {
-	// The stub ignores the writer, so this currently returns nil.
-	// Once the real implementation lands, this should return a wrapped error.
 	r := &Comment{}
-	_ = r.Write(context.Background(), errWriter{}, []normalizer.Finding{})
+	if err := r.Write(context.Background(), errWriter{}, []normalizer.Finding{}); err == nil {
+		t.Fatal("Write() with failing writer expected error, got nil")
+	}
 }
