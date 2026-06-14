@@ -111,12 +111,14 @@ func TestWriteJSON_WithFindings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReadFile: %v", err)
 	}
-	var got []normalizer.Finding
-	if err := json.Unmarshal(data, &got); err != nil {
+	var report struct {
+		Findings []normalizer.Finding `json:"findings"`
+	}
+	if err := json.Unmarshal(data, &report); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
-	if len(got) != 1 || got[0].Tool != "gitleaks" {
-		t.Errorf("unexpected findings: %+v", got)
+	if len(report.Findings) != 1 || report.Findings[0].Tool != "gitleaks" {
+		t.Errorf("unexpected findings: %+v", report.Findings)
 	}
 }
 
