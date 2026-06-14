@@ -19,10 +19,14 @@ inputs:
     description: 'Path to muninn.yml config file relative to repository root'
     required: false
     default: 'muninn.yml'
-  output:
-    description: 'Output formats to generate (comma-separated: json,sarif,comment)'
+  format:
+    description: 'Output format (sarif, json, comment, sarif,json)'
     required: false
-    default: 'json,sarif,comment'
+    default: 'sarif,comment'
+  output:
+    description: 'Optional SARIF output path override (default /tmp/muninn.sarif in Actions)'
+    required: false
+    default: ''
   target:
     description: 'Path to repository root to scan (default: repo root)'
     required: false
@@ -30,14 +34,18 @@ inputs:
 
 outputs:
   findings-count:
-    description: 'Total number of findings across all scanners'
+    description: 'Total number of findings'
   critical-count:
-    description: 'Number of critical-severity findings'
+    description: 'Number of critical findings'
   high-count:
-    description: 'Number of high-severity findings'
-  sarif-file:
-    description: 'Path to the generated SARIF file'
-  json-file:
+    description: 'Number of high findings'
+  medium-count:
+    description: 'Number of medium findings'
+  low-count:
+    description: 'Number of low findings'
+  sarif-path:
+    description: 'Path to the generated SARIF report'
+  json-path:
     description: 'Path to the generated JSON report'
 
 runs:
@@ -47,5 +55,6 @@ runs:
     GITHUB_TOKEN: ${{ inputs.token }}
     FAIL_ON: ${{ inputs.fail-on }}
     CONFIG_PATH: ${{ inputs.config }}
-    OUTPUT_FORMATS: ${{ inputs.output }}
+    OUTPUT_FORMATS: ${{ inputs.format }}
+    OUTPUT_PATH: ${{ inputs.output }}
     SCAN_TARGET: ${{ inputs.target }}
