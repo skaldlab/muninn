@@ -55,6 +55,25 @@ func TestSARIFReporter_EmptyFindings(t *testing.T) {
 	}
 }
 
+func TestSARIFReporter_OmitsSuppressedFindings(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "a", RuleID: "active-rule", Fingerprint: "a", Suppressed: false},
+		{ID: "b", RuleID: "suppressed-rule", Fingerprint: "b", Suppressed: true},
+	}
+	var buf bytes.Buffer
+	r := &SARIF{}
+	if err := r.Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	doc := parseSARIF(t, buf.Bytes())
+	if len(doc.Runs[0].Results) != 1 {
+		t.Fatalf("results = %d, want 1 (suppressed finding omitted)", len(doc.Runs[0].Results))
+	}
+	if doc.Runs[0].Results[0].RuleID != "active-rule" {
+		t.Errorf("results[0].ruleId = %q, want active-rule", doc.Runs[0].Results[0].RuleID)
+	}
+}
+
 func TestSARIFReporter_WithFindings(t *testing.T) {
 	findings := []normalizer.Finding{
 		{ID: "f1", Tool: "zizmor", RuleID: "z-rule", Severity: normalizer.SeverityCritical, Fingerprint: "f1"},

@@ -24,6 +24,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -62,10 +63,7 @@ func run() int {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	cfg, err := config.Load(*configPath)
-	if err != nil {
-		cfg = config.Defaults()
-	}
+	cfg := loadConfig(*configPath, *target)
 
 	if *failOn != "" {
 		cfg.FailOn = *failOn
@@ -82,6 +80,27 @@ func run() int {
 	}
 
 	return 0
+}
+
+// loadConfig reads muninn.yml, trying target-relative paths before defaults.
+// GitHub Actions docker runs may start with a working directory outside the
+// checked-out repository, so muninn.yml is not always found on the first path.
+func loadConfig(configPath, target string) *config.Config {
+	if !filepath.IsAbs(target) {
+		if abs, err := filepath.Abs(target); err == nil {
+			target = abs
+		}
+	}
+	paths := []string{configPath}
+	if !filepath.IsAbs(configPath) {
+		paths = append(paths, filepath.Join(target, configPath))
+	}
+	for _, p := range paths {
+		if cfg, err := config.Load(p); err == nil {
+			return cfg
+		}
+	}
+	return config.Defaults()
 }
 
 // scan orchestrates all enabled scanners against target, writes the requested
@@ -228,15 +247,22 @@ func applySuppressions(findings []normalizer.Finding, suppressions []config.Supp
 // rule. A suppression is active when its Expires field is zero or in the future.
 func isSuppressed(f normalizer.Finding, suppressions []config.Suppression, now time.Time) bool {
 	for _, s := range suppressions {
-		if s.Fingerprint != f.Fingerprint {
+		if !suppressionActive(s, now) {
 			continue
 		}
-		if !s.Expires.IsZero() && !now.Before(s.Expires) {
-			continue // expired
+		if s.ID != "" && strings.Contains(filepath.ToSlash(f.File), s.ID) {
+			return true
 		}
-		return true
+		if s.Fingerprint != "" && s.Fingerprint == f.Fingerprint {
+			return true
+		}
 	}
 	return false
+}
+
+// suppressionActive reports whether a suppression rule has not yet expired.
+func suppressionActive(s config.Suppression, now time.Time) bool {
+	return s.Expires.IsZero() || now.Before(s.Expires)
 }
 
 // writeSARIF writes a SARIF 2.1.0 document to path via the SARIF reporter.

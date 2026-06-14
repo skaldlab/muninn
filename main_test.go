@@ -490,6 +490,25 @@ func TestRunScanner_EnabledRuns(t *testing.T) {
 
 // ── applySuppressions ─────────────────────────────────────────────────────────
 
+func TestApplySuppressions_MatchingPathID(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", File: "testdata/fixture-repo/src/app.py", Fingerprint: "fp-1"},
+		{ID: "f2", File: "internal/scanner/gitleaks.go", Fingerprint: "fp-2"},
+	}
+	suppressions := []config.Suppression{
+		{ID: "testdata/fixture-repo", Reason: "integration fixture"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if !got[0].Suppressed {
+		t.Errorf("findings[0].Suppressed = false, want true (path matched fixture prefix)")
+	}
+	if got[1].Suppressed {
+		t.Errorf("findings[1].Suppressed = true, want false (path outside fixture)")
+	}
+}
+
 func TestApplySuppressions_MatchingFingerprint(t *testing.T) {
 	findings := []normalizer.Finding{
 		{ID: "f1", Fingerprint: "fp-abc", Severity: normalizer.SeverityHigh},

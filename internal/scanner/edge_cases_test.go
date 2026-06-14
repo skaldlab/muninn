@@ -292,10 +292,7 @@ func TestZizmorExtractLocation_Empty(t *testing.T) {
 
 func TestActionlintRun_MalformedJSON(t *testing.T) {
 	dir := t.TempDir()
-	wfDir := filepath.Join(dir, ".github", "workflows")
-	if err := os.MkdirAll(wfDir, 0755); err != nil {
-		t.Fatalf("setup: %v", err)
-	}
+	writeActionlintStubWorkflow(t, dir)
 	a := &Actionlint{
 		execFunc: fakeActionlintExecFunc("{bad json}", 0),
 		lookPath: func(string) (string, error) { return "/usr/bin/actionlint", nil },

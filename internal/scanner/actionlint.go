@@ -81,7 +81,15 @@ func (a *Actionlint) Run(ctx context.Context, target string) ([]normalizer.Findi
 // execute runs the actionlint subprocess and captures its JSON output from stdout.
 // Exit code 1 means findings were found — not a crash.
 func (a *Actionlint) execute(ctx context.Context, workflowsDir string) ([]actionlintOutput, error) {
-	cmd := a.execFunc(ctx, "actionlint", "-format", "{{json .}}", workflowsDir)
+	files, err := actionlintWorkflowFiles(workflowsDir)
+	if err != nil {
+		return nil, err
+	}
+	if len(files) == 0 {
+		return nil, nil
+	}
+	args := append([]string{"-format", "{{json .}}"}, files...)
+	cmd := a.execFunc(ctx, "actionlint", args...)
 	// Output() captures stdout and returns it even when cmd exits non-zero,
 	// so we can parse the JSON regardless of whether findings were present.
 	out, err := cmd.Output()
@@ -92,6 +100,19 @@ func (a *Actionlint) execute(ctx context.Context, workflowsDir string) ([]action
 		return nil, fmt.Errorf("actionlint: running scanner: %w", err)
 	}
 	return parseActionlintJSON(out)
+}
+
+// actionlintWorkflowFiles returns workflow file paths under dir.
+func actionlintWorkflowFiles(dir string) ([]string, error) {
+	var files []string
+	for _, pattern := range []string{"*.yml", "*.yaml"} {
+		matches, err := filepath.Glob(filepath.Join(dir, pattern))
+		if err != nil {
+			return nil, fmt.Errorf("actionlint: listing workflows: %w", err)
+		}
+		files = append(files, matches...)
+	}
+	return files, nil
 }
 
 // parseActionlintJSON unmarshals the JSON array actionlint writes to stdout.

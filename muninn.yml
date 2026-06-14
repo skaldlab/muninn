@@ -1,0 +1,33 @@
+version: 1
+fail-on: critical
+
+scanners:
+  gitleaks:
+    enabled: true
+  zizmor:
+    enabled: true
+  actionlint:
+    enabled: true
+  poutine:
+    enabled: true
+  semgrep:
+    enabled: true
+    rulesets:
+      - p/security-audit
+      - p/secrets
+  osv-scanner:
+    enabled: true
+  trivy:
+    enabled: true
+    severity: [CRITICAL, HIGH]
+    ignore-unfixed: true
+  checkov:
+    enabled: true
+
+suppressions:
+  - id: testdata/fixture-repo
+    reason: >
+      Intentional vulnerable fixtures for integration testing.
+      These files contain fake secrets and deliberately insecure
+      patterns to verify Muninn's detection capabilities.
+    expires: ""
