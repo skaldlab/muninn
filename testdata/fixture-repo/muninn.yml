@@ -11,11 +11,13 @@ scanners:
     enabled: true
     rulesets:
       - p/security-audit
-  trivy:
-    enabled: false              # no container in fixture
   osv-scanner:
-    enabled: false              # no real lockfile with vulns
+    enabled: true
+  trivy:
+    enabled: true
+    severity: [CRITICAL, HIGH]
+    ignore-unfixed: true
   poutine:
-    enabled: false              # requires git history
+    enabled: true
   checkov:
     enabled: true

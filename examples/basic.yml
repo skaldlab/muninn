@@ -1,40 +1,37 @@
 name: Muninn Security Scan
-
 on:
+  pull_request:
   push:
     branches: [main]
-  pull_request:
-
-permissions:
-  contents: read
-  security-events: write
-  pull-requests: write
 
 jobs:
-  scan:
-    name: Security Scan
+  muninn:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Run Muninn
-        uses: skaldlab/muninn@v1
+      - uses: actions/checkout@v4
         with:
-          # GitHub token — needed for PR comments and SARIF upload.
-          # The default ${{ github.token }} works for most repos.
+          persist-credentials: false
+
+      - uses: skaldlab/muninn@v1
+        id: muninn
+        with:
           token: ${{ secrets.GITHUB_TOKEN }}
-
-          # Fail the check if any finding at this severity or higher is found.
-          # Options: critical | high | medium | low
           fail-on: high
+          format: sarif,comment
 
-          # Optional: point to a custom config file.
-          # config: .github/muninn.yml
-
-      - name: Upload SARIF to GitHub Security tab
-        if: always()
+      - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: muninn.sarif
+          sarif_file: ${{ steps.muninn.outputs.sarif-path }}
+        if: always()
+
+      - name: Summary
+        run: |
+          echo "Found ${{ steps.muninn.outputs.findings-count }} issues"
+          echo "Critical: ${{ steps.muninn.outputs.critical-count }}"
+        if: always()

@@ -1,8 +1,8 @@
-# Root gitleaks config for the Muninn repo itself.
-# Excludes test fixtures from secret scanning.
+[extend]
+useDefault = true
 
-[allowlist]
-  description = "Exclude intentional test fixtures"
-  paths = [
-    '''testdata/'''
-  ]
+[[allowlists]]
+description = "Exclude intentional test fixtures"
+paths = [
+  '''(?:^|/)testdata/''',
+]

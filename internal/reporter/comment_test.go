@@ -19,8 +19,14 @@ func TestCommentReporter_EmptyFindings(t *testing.T) {
 	if !strings.Contains(out, "✅ No security issues found") {
 		t.Errorf("empty output missing clean-scan message, got:\n%s", out)
 	}
-	if !strings.Contains(out, commentFooter) {
-		t.Error("empty output missing footer")
+	if !strings.Contains(out, "[Muninn](https://github.com/skaldlab/muninn)") {
+		t.Error("empty output missing footer link")
+	}
+	if !strings.Contains(out, "[Skald Lab](https://skaldlab.dev)") {
+		t.Error("empty output missing Skald Lab link")
+	}
+	if strings.Contains(out, "<a href=") || strings.Contains(out, "---") {
+		t.Error("footer should use markdown only, no HTML or horizontal rules")
 	}
 }
 
@@ -46,7 +52,7 @@ func TestCommentReporter_WithFindings(t *testing.T) {
 	if !strings.Contains(out, "Exposed secret") {
 		t.Error("output missing critical finding title")
 	}
-	if !strings.Contains(out, commentFooter) {
+	if !strings.Contains(out, "[Skald Lab](https://skaldlab.dev)") {
 		t.Error("output missing footer")
 	}
 }
@@ -92,6 +98,29 @@ func TestCommentReporter_TruncatesLongDescription(t *testing.T) {
 	}
 	if strings.Contains(out, strings.Repeat("x", 301)) {
 		t.Error("full 301-char description should not appear in output")
+	}
+}
+
+func TestCommentReporter_OmitsSuppressedFindings(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "a", Severity: normalizer.SeverityCritical, Title: "real bug", Fingerprint: "a"},
+		{ID: "b", Severity: normalizer.SeverityCritical, Title: "fixture noise",
+			Fingerprint: "b", Suppressed: true},
+	}
+	var buf bytes.Buffer
+	r := &Comment{}
+	if err := r.Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	if strings.Contains(out, "fixture noise") {
+		t.Error("suppressed finding should not appear in PR comment")
+	}
+	if !strings.Contains(out, "real bug") {
+		t.Error("non-suppressed finding should appear in PR comment")
+	}
+	if strings.Contains(out, "| 🔴 Critical | 2 |") {
+		t.Error("summary should count only visible findings")
 	}
 }
 

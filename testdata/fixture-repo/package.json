@@ -1,0 +1,7 @@
+{
+  "name": "fixture-repo",
+  "version": "1.0.0",
+  "dependencies": {
+    "lodash": "4.17.15"
+  }
+}

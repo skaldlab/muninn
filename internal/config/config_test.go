@@ -89,7 +89,7 @@ func TestLoad_EmptyFile(t *testing.T) {
 }
 
 func TestValidate_ValidVersionAndFailOn(t *testing.T) {
-	for _, failOn := range []string{"critical", "high", "medium", "low", ""} {
+	for _, failOn := range []string{"critical", "high", "medium", "low", "info", ""} {
 		cfg := &Config{Version: 1, FailOn: failOn}
 		if err := validate(cfg); err != nil {
 			t.Errorf("validate with FailOn=%q expected nil, got %v", failOn, err)

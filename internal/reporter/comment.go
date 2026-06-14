@@ -10,9 +10,9 @@ import (
 )
 
 const (
-	commentMaxDesc = 300
-	commentFooter  = `<sub>🪶 Powered by <a href="https://github.com/skaldlab/muninn">Muninn</a>` +
-		` by Skaldlab · <a href="https://muninn.dev">muninn.dev</a></sub>`
+	commentMaxDesc       = 300
+	commentMaxPerSection = 10
+	commentFooter        = "\n*🪶 Powered by [Muninn](https://github.com/skaldlab/muninn) · [Skald Lab](https://skaldlab.dev)*"
 )
 
 // Comment formats findings as Markdown suitable for posting as a GitHub PR
@@ -22,19 +22,32 @@ type Comment struct{}
 
 // Write implements Reporter.
 func (c *Comment) Write(_ context.Context, w io.Writer, findings []normalizer.Finding) error {
-	if len(findings) == 0 {
+	visible := visibleCommentFindings(findings)
+	if len(visible) == 0 {
 		return writeEmptyComment(w)
 	}
 	if _, err := fmt.Fprint(w, "## 🪶 Muninn Security Scan\n\n"); err != nil {
 		return fmt.Errorf("comment header: %w", err)
 	}
-	if err := writeSummaryTable(w, findings); err != nil {
+	if err := writeSummaryTable(w, visible); err != nil {
 		return err
 	}
-	if err := writeFindingGroups(w, findings); err != nil {
+	if err := writeFindingGroups(w, visible); err != nil {
 		return err
 	}
 	return writeCommentFooter(w)
+}
+
+// visibleCommentFindings drops suppressed entries so PR comments match fail-on
+// behaviour and avoid noise from intentional test fixtures.
+func visibleCommentFindings(findings []normalizer.Finding) []normalizer.Finding {
+	out := make([]normalizer.Finding, 0, len(findings))
+	for _, f := range findings {
+		if !f.Suppressed {
+			out = append(out, f)
+		}
+	}
+	return out
 }
 
 func writeEmptyComment(w io.Writer) error {
@@ -128,9 +141,20 @@ func writeSeveritySection(w io.Writer, label string, findings []normalizer.Findi
 	if _, err := fmt.Fprintf(w, "### %s Findings\n\n", label); err != nil {
 		return fmt.Errorf("section header: %w", err)
 	}
-	for _, f := range findings {
+	show := findings
+	omitted := 0
+	if len(findings) > commentMaxPerSection {
+		show = findings[:commentMaxPerSection]
+		omitted = len(findings) - commentMaxPerSection
+	}
+	for _, f := range show {
 		if err := writeCommentFinding(w, f); err != nil {
 			return err
+		}
+	}
+	if omitted > 0 {
+		if _, err := fmt.Fprintf(w, "*…and %d more %s finding(s) not shown.*\n\n", omitted, label); err != nil {
+			return fmt.Errorf("section overflow note: %w", err)
 		}
 	}
 	return nil
@@ -144,7 +168,7 @@ func writeCommentFinding(w io.Writer, f normalizer.Finding) error {
 	loc := fmt.Sprintf("%s:%d", f.File, f.Line)
 	desc := truncateDesc(f.Description)
 	_, err := fmt.Fprintf(w,
-		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n%s\n\n---\n\n",
+		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n%s\n\n",
 		f.Tool, title, loc, f.RuleID, desc)
 	return err
 }
