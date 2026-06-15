@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
@@ -173,9 +174,17 @@ func writeCommentFinding(w io.Writer, f normalizer.Finding) error {
 	}
 	loc := fmt.Sprintf("%s:%d", f.File, f.Line)
 	desc := truncateDesc(f.Description)
-	_, err := fmt.Fprintf(w,
-		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n%s\n\n",
-		f.Tool, title, loc, f.RuleID, desc)
+	if _, err := fmt.Fprintf(w,
+		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n",
+		f.Tool, title, loc, f.RuleID); err != nil {
+		return err
+	}
+	if len(f.DetectedBy) > 1 {
+		if _, err := fmt.Fprintf(w, "**Detected by:** %s\n", strings.Join(f.DetectedBy, ", ")); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintf(w, "%s\n\n", desc)
 	return err
 }
 

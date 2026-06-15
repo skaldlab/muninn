@@ -41,6 +41,17 @@ Muninn runs all eight scanners, posts a summary comment on your pull request, up
 | **trivy** | Container image and filesystem vulnerabilities | [aquasecurity/trivy](https://github.com/aquasecurity/trivy) |
 | **checkov** | Infrastructure-as-Code misconfigurations (Terraform, K8s, Docker) | [bridgecrewio/checkov](https://github.com/bridgecrewio/checkov) |
 
+### Cross-scanner deduplication
+
+Running multiple dependency scanners means the same CVE can surface more than
+once — OSV-Scanner flags it in a lockfile while Trivy flags it in a container
+layer. Muninn collapses these into a single finding keyed on the advisory id
+(a `CVE-…` is preferred over `GHSA-…` so the same vulnerability converges across
+scanners) scoped to the affected package, so distinct packages sharing a CVE
+stay separate. The scanners that reported it are listed under `detected_by` in
+the JSON report, a **Detected by** line in the PR comment, and a `detectedBy`
+property on the SARIF result.
+
 ---
 
 ## Configuration

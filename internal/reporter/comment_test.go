@@ -148,3 +148,33 @@ func TestCommentReporter_WriterError(t *testing.T) {
 		t.Fatal("Write() with failing writer expected error, got nil")
 	}
 }
+
+func TestCommentReporter_ShowsDetectedBy(t *testing.T) {
+	findings := []normalizer.Finding{{
+		ID: "f1", Tool: "osv-scanner", Severity: normalizer.SeverityHigh,
+		Title: "lodash command injection", RuleID: "CVE-2021-23337",
+		File: "package-lock.json", Fingerprint: "f1",
+		DetectedBy: []string{"osv-scanner", "trivy"},
+	}}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	if !strings.Contains(buf.String(), "**Detected by:** osv-scanner, trivy") {
+		t.Errorf("comment missing detected-by line:\n%s", buf.String())
+	}
+}
+
+func TestCommentReporter_OmitsDetectedByForSingleScanner(t *testing.T) {
+	findings := []normalizer.Finding{{
+		ID: "f1", Tool: "trivy", Severity: normalizer.SeverityHigh,
+		Title: "some vuln", RuleID: "CVE-2021-0001", Fingerprint: "f1",
+	}}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	if strings.Contains(buf.String(), "Detected by:") {
+		t.Errorf("single-scanner finding should not show detected-by:\n%s", buf.String())
+	}
+}

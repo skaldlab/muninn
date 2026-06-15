@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Cross-scanner deduplication by advisory id: findings that report the same
+  CVE/GHSA for the same package from different scanners (e.g. OSV-Scanner from a
+  lockfile and Trivy from a container layer) are now collapsed into a single
+  finding. The contributing scanners are recorded in a new `detected_by` field
+  (surfaced in the JSON report, the PR comment's "Detected by" line, and a
+  `detectedBy` SARIF result property). A CVE is preferred over GHSA so the same
+  vulnerability converges on one id across scanners (#27).
+
 ## [0.2.0] - 2026-06-15
 
 Supply-chain hardening for the scanner image and signed, verifiable releases
