@@ -212,12 +212,11 @@ cosign verify \
   ghcr.io/skaldlab/muninn:v0.2.0
 ```
 
-Verify release binaries via the signed checksums file (download `checksums.txt`, `checksums.txt.sig`, and `checksums.txt.pem` from the release):
+Verify release binaries via the signed checksums file (download `checksums.txt` and the Sigstore bundle `checksums.txt.sigstore.json` from the release):
 
 ```bash
 cosign verify-blob \
-  --certificate checksums.txt.pem \
-  --signature checksums.txt.sig \
+  --bundle checksums.txt.sigstore.json \
   --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   checksums.txt
@@ -226,13 +225,13 @@ cosign verify-blob \
 shasum -a 256 -c checksums.txt
 ```
 
-Inspect the image's SBOM and SLSA provenance attestations:
+Inspect the image's SBOM and SLSA provenance attestations (attached by BuildKit):
 
 ```bash
-cosign verify-attestation --type spdxjson \
-  --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  ghcr.io/skaldlab/muninn:v0.2.0
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:v0.2.0 \
+  --format '{{ json .SBOM }}'
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:v0.2.0 \
+  --format '{{ json .Provenance }}'
 ```
 
 ### CLI flags

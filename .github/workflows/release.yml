@@ -55,8 +55,7 @@ jobs:
       - name: Sign checksums (keyless)
         run: |
           cosign sign-blob --yes \
-            --output-signature dist/checksums.txt.sig \
-            --output-certificate dist/checksums.txt.pem \
+            --bundle dist/checksums.txt.sigstore.json \
             dist/checksums.txt
 
       - name: Generate SBOM
