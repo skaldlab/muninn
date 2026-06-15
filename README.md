@@ -183,7 +183,7 @@ The official image bundles Muninn and all eight scanner binaries:
 docker run --rm \
   -v "$(pwd):/github/workspace" \
   -w /github/workspace \
-  ghcr.io/skaldlab/muninn:v0.2.0 \
+  ghcr.io/skaldlab/muninn:0.2.0 \
   --target . \
   --output json,sarif \
   --fail-on high
@@ -209,7 +209,7 @@ Verify the container image:
 cosign verify \
   --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  ghcr.io/skaldlab/muninn:v0.2.0
+  ghcr.io/skaldlab/muninn:0.2.0
 ```
 
 Verify release binaries via the signed checksums file (download `checksums.txt` and the Sigstore bundle `checksums.txt.sigstore.json` from the release):
@@ -228,9 +228,9 @@ shasum -a 256 -c checksums.txt
 Inspect the image's SBOM and SLSA provenance attestations (attached by BuildKit):
 
 ```bash
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:v0.2.0 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.2.0 \
   --format '{{ json .SBOM }}'
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:v0.2.0 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.2.0 \
   --format '{{ json .Provenance }}'
 ```
 
