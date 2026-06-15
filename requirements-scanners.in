@@ -1,0 +1,13 @@
+# Top-level pins for the pip-installed scanners. Renovate keeps these current;
+# requirements-scanners.txt is the hash-locked, multi-arch output compiled from
+# this file (make scanners-lock). Do not edit the .txt by hand.
+semgrep==1.166.0
+# checkov 3.3.x caps aiohttp<3.14.0, which strands it on a CVE-affected aiohttp
+# line (GHSA-4fvr-rgm6-gqmc, GHSA-jg22-mg44-37j8, and others). 3.2.531 is the
+# newest checkov that accepts the patched aiohttp>=3.14.1 floor below. Move back
+# up to the latest checkov once a >=3.3 release lifts the aiohttp<3.14 cap.
+checkov==3.2.531
+zizmor==1.25.2
+
+# Security floor for checkov's aiohttp dependency: keep it on the patched line.
+aiohttp>=3.14.1
