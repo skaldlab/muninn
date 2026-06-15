@@ -20,11 +20,17 @@ FROM alpine:3.24 AS tools
 
 RUN apk add --no-cache curl tar
 
-# Pinned scanner versions. Keep each version in sync with the SHA256 sums below.
+# Pinned scanner versions. Renovate bumps these via the annotations below; the
+# SHA256 sums are kept in sync by scripts/update_scanner_checksums.py.
+# renovate: datasource=github-releases depName=gitleaks/gitleaks
 ARG GITLEAKS_VERSION=8.30.1
+# renovate: datasource=github-releases depName=rhysd/actionlint
 ARG ACTIONLINT_VERSION=1.7.12
+# renovate: datasource=github-releases depName=boostsecurityio/poutine
 ARG POUTINE_VERSION=1.1.6
+# renovate: datasource=github-releases depName=google/osv-scanner
 ARG OSV_SCANNER_VERSION=2.3.8
+# renovate: datasource=github-releases depName=aquasecurity/trivy
 ARG TRIVY_VERSION=0.71.1
 
 # Target architecture, provided by BuildKit (amd64 | arm64). Declaring the ARG
@@ -138,8 +144,11 @@ RUN apt-get update && \
 # image's glibc.  zizmor ships a Rust binary wheel on PyPI.  Top-level versions
 # are pinned here; full transitive hash pinning (pip --require-hashes) is a
 # planned follow-up since it needs a per-arch, hash-locked requirements file.
+# renovate: datasource=pypi depName=semgrep
 ARG SEMGREP_VERSION=1.166.0
+# renovate: datasource=pypi depName=checkov
 ARG CHECKOV_VERSION=3.3.1
+# renovate: datasource=pypi depName=zizmor
 ARG ZIZMOR_VERSION=1.25.2
 RUN pip install --no-cache-dir \
       "semgrep==${SEMGREP_VERSION}" \

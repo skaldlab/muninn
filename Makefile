@@ -1,4 +1,4 @@
-.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums
+.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums scanner-checksums-check scanner-checksums-write
 
 test:
 	go test -race ./...
@@ -34,3 +34,11 @@ hooks:
 # Dockerfile. Run after bumping an ARG <TOOL>_VERSION, then paste them back.
 scanner-checksums:
 	@bash scripts/scanner-checksums.sh
+
+# Verify the Dockerfile's hardcoded SHA256 sums match the pinned versions.
+scanner-checksums-check:
+	@python3 scripts/update_scanner_checksums.py
+
+# Rewrite the Dockerfile's SHA256 sums to match the pinned versions in place.
+scanner-checksums-write:
+	@python3 scripts/update_scanner_checksums.py --write
