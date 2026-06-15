@@ -1,4 +1,4 @@
-.PHONY: test coverage coverage-html fmt lint build check hooks
+.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums
 
 test:
 	go test -race ./...
@@ -29,3 +29,8 @@ hooks:
 	git config core.hooksPath .githooks
 	chmod +x .githooks/pre-commit .githooks/pre-push
 	@echo "Git hooks installed from .githooks/ (pre-commit + pre-push)"
+
+# Print linux amd64/arm64 SHA256 sums for the scanner versions pinned in the
+# Dockerfile. Run after bumping an ARG <TOOL>_VERSION, then paste them back.
+scanner-checksums:
+	@bash scripts/scanner-checksums.sh
