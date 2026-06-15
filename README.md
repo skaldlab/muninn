@@ -199,6 +199,42 @@ go install github.com/skaldlab/muninn@v0.1.0
 
 Scanner binaries (`gitleaks`, `semgrep`, `checkov`, and the rest) must be on `PATH`. The Docker image includes everything pre-installed.
 
+### Verifying releases
+
+Every release is signed with [cosign](https://github.com/sigstore/cosign) using keyless (OIDC) signing — there are no long-lived keys to trust. The container image also ships with an SBOM and a max-mode SLSA provenance attestation.
+
+Verify the container image:
+
+```bash
+cosign verify \
+  --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  ghcr.io/skaldlab/muninn:v0.1.0
+```
+
+Verify release binaries via the signed checksums file (download `checksums.txt`, `checksums.txt.sig`, and `checksums.txt.pem` from the release):
+
+```bash
+cosign verify-blob \
+  --certificate checksums.txt.pem \
+  --signature checksums.txt.sig \
+  --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  checksums.txt
+
+# Then confirm the binary matches the verified checksums:
+shasum -a 256 -c checksums.txt
+```
+
+Inspect the image's SBOM and SLSA provenance attestations:
+
+```bash
+cosign verify-attestation --type spdxjson \
+  --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  ghcr.io/skaldlab/muninn:v0.1.0
+```
+
 ### CLI flags
 
 | Flag | Env var | Default | Description |

@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Keyless (OIDC) cosign signing of the published container image and of the
+  release binary checksums (`checksums.txt.sig` / `checksums.txt.pem`)
+- SBOM (SPDX) attached to every release and as an image attestation
+- Max-mode SLSA build provenance attestation on the container image
+- "Verifying releases" instructions in the README
+
 ## [0.1.0] - 2026-06-14
 
 ### Added
