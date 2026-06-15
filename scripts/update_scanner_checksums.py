@@ -40,7 +40,12 @@ def read_args(text: str) -> dict[str, str]:
 
 
 def fetch(url: str) -> str:
-    with urllib.request.urlopen(url, timeout=60) as resp:  # noqa: S310 (trusted host)
+    # Callers only build https://github.com/... URLs from hardcoded templates.
+    # Reject any other scheme so urllib can never be steered into a file:// (or
+    # ftp://) read; this is what the audit rule suppressed below warns about.
+    if not url.startswith("https://"):
+        raise ValueError(f"refusing to fetch non-https URL: {url}")
+    with urllib.request.urlopen(url, timeout=60) as resp:  # noqa: S310  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
         return resp.read().decode()
 
 
