@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/skaldlab/muninn/internal/normalizer"
+	"github.com/skaldlab/muninn/internal/version"
 )
 
 // JSON writes findings as a pretty-printed JSON object with a summary envelope.
@@ -38,7 +39,7 @@ func (j *JSON) Write(_ context.Context, w io.Writer, findings []normalizer.Findi
 	}
 	sorted := sortedJSONFindings(findings)
 	report := jsonReport{
-		Version:  "0.1.0",
+		Version:  version.Version,
 		Tool:     "muninn",
 		Summary:  buildJSONSummary(sorted),
 		Findings: sorted,
