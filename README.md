@@ -18,7 +18,7 @@ Add this to any GitHub Actions workflow:
 
 ```yaml
 - name: Muninn Security Scan
-  uses: skaldlab/muninn@v0.1.0
+  uses: skaldlab/muninn@v0.2.0
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
     fail-on: high
@@ -183,7 +183,7 @@ The official image bundles Muninn and all eight scanner binaries:
 docker run --rm \
   -v "$(pwd):/github/workspace" \
   -w /github/workspace \
-  ghcr.io/skaldlab/muninn:v0.1.0 \
+  ghcr.io/skaldlab/muninn:v0.2.0 \
   --target . \
   --output json,sarif \
   --fail-on high
@@ -194,7 +194,7 @@ docker run --rm \
 Download a release binary from [GitHub Releases](https://github.com/skaldlab/muninn/releases) or install with Go:
 
 ```bash
-go install github.com/skaldlab/muninn@v0.1.0
+go install github.com/skaldlab/muninn@v0.2.0
 ```
 
 Scanner binaries (`gitleaks`, `semgrep`, `checkov`, and the rest) must be on `PATH`. The Docker image includes everything pre-installed.
@@ -209,7 +209,7 @@ Verify the container image:
 cosign verify \
   --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  ghcr.io/skaldlab/muninn:v0.1.0
+  ghcr.io/skaldlab/muninn:v0.2.0
 ```
 
 Verify release binaries via the signed checksums file (download `checksums.txt`, `checksums.txt.sig`, and `checksums.txt.pem` from the release):
@@ -232,7 +232,7 @@ Inspect the image's SBOM and SLSA provenance attestations:
 cosign verify-attestation --type spdxjson \
   --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  ghcr.io/skaldlab/muninn:v0.1.0
+  ghcr.io/skaldlab/muninn:v0.2.0
 ```
 
 ### CLI flags

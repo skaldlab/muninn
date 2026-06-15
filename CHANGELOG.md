@@ -1,13 +1,30 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.0] - 2026-06-15
+
+Supply-chain hardening for the scanner image and signed, verifiable releases
+(closes #30).
 
 ### Added
+- Pinned every bundled binary scanner to an exact version with SHA256 checksum
+  verification in the Docker image — gitleaks, zizmor, actionlint, poutine,
+  osv-scanner, trivy (#31)
+- Hash-locked the pip-installed scanners (semgrep, checkov, zizmor) via a fully
+  pinned, multi-arch `requirements-scanners.txt` installed with
+  `pip --require-hashes` (#33)
+- Renovate configuration to auto-PR scanner version bumps, with a CI job that
+  refreshes the pinned checksums (#32)
 - Keyless (OIDC) cosign signing of the published container image and of the
-  release binary checksums (`checksums.txt.sig` / `checksums.txt.pem`)
-- SBOM (SPDX) attached to every release and as an image attestation
-- Max-mode SLSA build provenance attestation on the container image
-- "Verifying releases" instructions in the README
+  release binary checksums (`checksums.txt.sig` / `checksums.txt.pem`) (#34)
+- SBOM (SPDX) attached to every release and as an image attestation (#34)
+- Max-mode SLSA build provenance attestation on the container image (#34)
+- "Verifying releases" instructions in the README (#34)
+
+### Changed
+- Pinned checkov to 3.2.531 (from 3.3.1) so its dependency tree resolves the
+  patched aiohttp 3.14.1 and drops the unfixable python-ecdsa Minerva
+  dependency that checkov 3.3.x introduced. Revisit when a newer checkov lifts
+  its `aiohttp<3.14` cap (#33)
 
 ## [0.1.0] - 2026-06-14
 
