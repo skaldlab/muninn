@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/skaldlab/muninn/internal/normalizer"
+	"github.com/skaldlab/muninn/internal/version"
 )
 
 // errWriter is an io.Writer that always returns an error, used to test
@@ -42,8 +43,8 @@ func TestJSONReporter_EmptyFindings(t *testing.T) {
 		t.Fatalf("Write() unexpected error: %v", err)
 	}
 	out := parseReportOut(t, buf.Bytes())
-	if out.Version != "0.1.0" {
-		t.Errorf("version = %q, want 0.1.0", out.Version)
+	if out.Version != version.Version {
+		t.Errorf("version = %q, want %q", out.Version, version.Version)
 	}
 	if out.Tool != "muninn" {
 		t.Errorf("tool = %q, want muninn", out.Tool)
