@@ -15,7 +15,7 @@ Supply-chain hardening for the scanner image and signed, verifiable releases
 - Renovate configuration to auto-PR scanner version bumps, with a CI job that
   refreshes the pinned checksums (#32)
 - Keyless (OIDC) cosign signing of the published container image and of the
-  release binary checksums (`checksums.txt.sig` / `checksums.txt.pem`) (#34)
+  release binary checksums (Sigstore bundle `checksums.txt.sigstore.json`) (#34)
 - SBOM (SPDX) attached to every release and as an image attestation (#34)
 - Max-mode SLSA build provenance attestation on the container image (#34)
 - "Verifying releases" instructions in the README (#34)
