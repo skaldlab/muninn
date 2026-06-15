@@ -1,0 +1,6 @@
+# Top-level pins for the pip-installed scanners. Renovate keeps these current;
+# requirements-scanners.txt is the hash-locked, multi-arch output compiled from
+# this file (make scanners-lock). Do not edit the .txt by hand.
+semgrep==1.166.0
+checkov==3.3.1
+zizmor==1.25.2

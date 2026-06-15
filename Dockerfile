@@ -141,19 +141,13 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Python/Rust scanners installed natively so their compiled parts match the
-# image's glibc.  zizmor ships a Rust binary wheel on PyPI.  Top-level versions
-# are pinned here; full transitive hash pinning (pip --require-hashes) is a
-# planned follow-up since it needs a per-arch, hash-locked requirements file.
-# renovate: datasource=pypi depName=semgrep
-ARG SEMGREP_VERSION=1.166.0
-# renovate: datasource=pypi depName=checkov
-ARG CHECKOV_VERSION=3.3.1
-# renovate: datasource=pypi depName=zizmor
-ARG ZIZMOR_VERSION=1.25.2
-RUN pip install --no-cache-dir \
-      "semgrep==${SEMGREP_VERSION}" \
-      "checkov==${CHECKOV_VERSION}" \
-      "zizmor==${ZIZMOR_VERSION}" && \
+# image's glibc.  zizmor ships a Rust binary wheel on PyPI.  Versions and the
+# full transitive dependency tree are hash-locked in requirements-scanners.txt
+# (compiled from requirements-scanners.in via `make scanners-lock`), so pip
+# verifies every artifact's SHA256 with --require-hashes.
+COPY requirements-scanners.txt /tmp/requirements-scanners.txt
+RUN pip install --no-cache-dir --require-hashes -r /tmp/requirements-scanners.txt && \
+    rm /tmp/requirements-scanners.txt && \
     semgrep --version && checkov --version && zizmor --version
 
 # Static Go scanner binaries

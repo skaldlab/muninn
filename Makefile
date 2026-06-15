@@ -1,4 +1,4 @@
-.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums scanner-checksums-check scanner-checksums-write
+.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums scanner-checksums-check scanner-checksums-write scanners-lock
 
 test:
 	go test -race ./...
@@ -42,3 +42,9 @@ scanner-checksums-check:
 # Rewrite the Dockerfile's SHA256 sums to match the pinned versions in place.
 scanner-checksums-write:
 	@python3 scripts/update_scanner_checksums.py --write
+
+# Recompile the hash-locked, multi-arch pip scanner lockfile from the .in file.
+# Requires uv (https://docs.astral.sh/uv/). Run after editing requirements-scanners.in.
+scanners-lock:
+	uv pip compile --universal --generate-hashes --python-version 3.14 \
+		requirements-scanners.in -o requirements-scanners.txt
