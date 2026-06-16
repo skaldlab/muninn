@@ -195,6 +195,18 @@ func TestPoutineSeverity_Low(t *testing.T) {
 	}
 }
 
+func TestPoutineSeverity_Error(t *testing.T) {
+	if got := poutineSeverity("error"); got != normalizer.SeverityCritical {
+		t.Errorf("poutineSeverity(error) = %q, want critical", got)
+	}
+}
+
+func TestPoutineSeverity_Warning(t *testing.T) {
+	if got := poutineSeverity("warning"); got != normalizer.SeverityMedium {
+		t.Errorf("poutineSeverity(warning) = %q, want medium", got)
+	}
+}
+
 func TestPoutineSeverity_Default(t *testing.T) {
 	if got := poutineSeverity("none"); got != normalizer.SeverityInfo {
 		t.Errorf("poutineSeverity(none) = %q, want info", got)
