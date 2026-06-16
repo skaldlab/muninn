@@ -165,6 +165,26 @@ func TestCommentReporter_ShowsDetectedBy(t *testing.T) {
 	}
 }
 
+func TestCommentReporter_DescriptionCannotBreakLayout(t *testing.T) {
+	findings := []normalizer.Finding{{
+		ID: "f1", Tool: "osv-scanner", Severity: normalizer.SeverityHigh,
+		Title: "lodash ReDoS", RuleID: "GHSA-29mw-wpgm-hmr9", File: "package-lock.json",
+		Fingerprint: "f1",
+		Description: "Steps to reproduce:\n```js\nvar lo = require('lodash');\n```\n### Impact\nbad things happen",
+	}}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	if strings.Contains(out, "```") {
+		t.Errorf("description code fences must be neutralized, got:\n%s", out)
+	}
+	if !strings.Contains(out, "Powered by [Muninn]") {
+		t.Errorf("footer missing — description broke the comment layout:\n%s", out)
+	}
+}
+
 func TestCommentReporter_OmitsDetectedByForSingleScanner(t *testing.T) {
 	findings := []normalizer.Finding{{
 		ID: "f1", Tool: "trivy", Severity: normalizer.SeverityHigh,

@@ -189,8 +189,27 @@ func writeCommentFinding(w io.Writer, f normalizer.Finding) error {
 }
 
 func truncateDesc(s string) string {
+	s = sanitizeDesc(s)
 	if len(s) <= commentMaxDesc {
 		return s
 	}
-	return s[:commentMaxDesc] + "..."
+	return strings.TrimSpace(s[:commentMaxDesc]) + "..."
+}
+
+// sanitizeDesc flattens a scanner-provided description into a single line of
+// plain text so its own Markdown — code fences, headings, tables — cannot break
+// out of the finding and corrupt the surrounding comment (e.g. an unbalanced
+// ``` fence swallowing every later finding and the footer into a code block).
+func sanitizeDesc(s string) string {
+	// Collapse all whitespace runs (including newlines) so line-anchored Markdown
+	// like ``` fences and # headings lose their block meaning.
+	s = strings.Join(strings.Fields(s), " ")
+	// Drop backticks so an odd count cannot open an inline or fenced code span.
+	s = strings.ReplaceAll(s, "`", "'")
+	// Escape a leading block-level marker so the flattened line renders as a
+	// paragraph, not a heading/list/quote.
+	if s != "" && strings.ContainsRune("#>-+*|", rune(s[0])) {
+		s = "\\" + s
+	}
+	return s
 }
