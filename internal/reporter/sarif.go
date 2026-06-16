@@ -89,6 +89,9 @@ func toSARIFResult(f normalizer.Finding) sarifResult {
 	if f.Suppressed {
 		r.Suppressions = []sarifSuppression{{Kind: "inSource", Justification: "suppressed"}}
 	}
+	if len(f.DetectedBy) > 1 {
+		r.Properties = &sarifProperties{DetectedBy: f.DetectedBy}
+	}
 	return r
 }
 
@@ -169,6 +172,13 @@ type sarifResult struct {
 	Locations    []sarifLocation    `json:"locations"`
 	Fingerprints map[string]string  `json:"fingerprints,omitempty"`
 	Suppressions []sarifSuppression `json:"suppressions"`
+	Properties   *sarifProperties   `json:"properties,omitempty"`
+}
+
+// sarifProperties is a SARIF result property bag. Muninn uses it to record the
+// full set of scanners that detected a deduplicated finding.
+type sarifProperties struct {
+	DetectedBy []string `json:"detectedBy,omitempty"`
 }
 
 type sarifLocation struct {

@@ -1,5 +1,26 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- Cross-scanner deduplication by advisory id: findings that report the same
+  CVE/GHSA for the same package from different scanners (e.g. OSV-Scanner from a
+  lockfile and Trivy from a container layer) are now collapsed into a single
+  finding. The contributing scanners are recorded in a new `detected_by` field
+  (surfaced in the JSON report, the PR comment's "Detected by" line, and a
+  `detectedBy` SARIF result property). A CVE is preferred over GHSA so the same
+  vulnerability converges on one id across scanners (#27).
+- Richer dependency finding rendering: aggregated dependency findings now appear
+  under a neutral `[dependency]` heading (instead of a single scanner's name)
+  with `Package`, `Advisory` (including the shared CVE), `Detected by`, and a
+  `Sources` list showing where each scanner observed it. A new `sources` field on
+  the finding (per-scanner `tool` + `file`) backs the JSON report (#27).
+
+### Fixed
+- PR comment rendering: scanner descriptions are flattened to a single line and
+  their Markdown (code fences, headings) neutralized, so an unbalanced ``` fence
+  can no longer swallow later findings and the footer into a code block.
+
 ## [0.2.0] - 2026-06-15
 
 Supply-chain hardening for the scanner image and signed, verifiable releases

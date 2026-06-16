@@ -122,6 +122,7 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 	}
 
 	findings = applySuppressions(findings, cfg.Suppressions)
+	findings = dedupeByAdvisory(findings)
 
 	sarifPath, jsonPath := resolveOutputPaths()
 	for _, format := range splitFormats(outputFormats) {

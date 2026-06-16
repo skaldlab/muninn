@@ -93,6 +93,38 @@ func TestSARIFReporter_WithFindings(t *testing.T) {
 	}
 }
 
+func TestSARIFReporter_DetectedByProperty(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "merged", Tool: "osv-scanner", RuleID: "CVE-2021-23337", Severity: normalizer.SeverityHigh,
+			Fingerprint: "merged", DetectedBy: []string{"osv-scanner", "trivy"}},
+		{ID: "solo", Tool: "trivy", RuleID: "CVE-2021-0001", Severity: normalizer.SeverityHigh, Fingerprint: "solo"},
+	}
+	var buf bytes.Buffer
+	if err := (&SARIF{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	var doc struct {
+		Runs []struct {
+			Results []struct {
+				RuleID     string `json:"ruleId"`
+				Properties *struct {
+					DetectedBy []string `json:"detectedBy"`
+				} `json:"properties"`
+			} `json:"results"`
+		} `json:"runs"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &doc); err != nil {
+		t.Fatalf("invalid SARIF JSON: %v", err)
+	}
+	results := doc.Runs[0].Results
+	if results[0].Properties == nil || len(results[0].Properties.DetectedBy) != 2 {
+		t.Errorf("merged result should carry detectedBy with 2 scanners, got %+v", results[0].Properties)
+	}
+	if results[1].Properties != nil {
+		t.Errorf("single-scanner result should omit properties, got %+v", results[1].Properties)
+	}
+}
+
 func TestSARIFReporter_SeverityMapping(t *testing.T) {
 	cases := []struct {
 		sev   normalizer.Severity

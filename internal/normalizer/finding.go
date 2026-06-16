@@ -25,6 +25,17 @@ type Finding struct {
 	// Tool is the name of the scanner that produced this finding (e.g. "gitleaks").
 	Tool string `json:"tool"`
 
+	// DetectedBy lists every scanner that reported the same advisory when
+	// findings for one CVE/GHSA from different scanners are merged into a single
+	// finding. It is nil for findings reported by a single scanner; consult Tool
+	// for those. The first entry is the canonical (primary) scanner.
+	DetectedBy []string `json:"detected_by,omitempty"`
+
+	// Sources records where each scanner observed a merged finding (e.g. a
+	// lockfile via osv-scanner and a container layer via trivy). It is nil for
+	// findings reported by a single scanner; File then holds the sole location.
+	Sources []FindingSource `json:"sources,omitempty"`
+
 	// Severity is the normalized risk level.
 	Severity Severity `json:"severity"`
 
@@ -61,4 +72,15 @@ type Finding struct {
 	// Metadata holds scanner-specific fields that do not map to the universal schema.
 	// Keys should use snake_case.
 	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+// FindingSource records one scanner's observation of a finding and where it saw
+// it. Merged findings carry one entry per contributing scanner so reporters can
+// show, for example, "package-lock.json (osv-scanner)" and "image (trivy)".
+type FindingSource struct {
+	// Tool is the scanner that reported this occurrence.
+	Tool string `json:"tool"`
+
+	// File is the location the scanner reported it at.
+	File string `json:"file"`
 }
