@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0] - 2026-06-16
 
 ### Added
 - Cross-scanner deduplication by advisory id: findings that report the same
