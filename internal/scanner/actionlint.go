@@ -21,6 +21,7 @@ type actionlintOutput struct {
 	Filepath string `json:"filepath"`
 	Line     int    `json:"line"`
 	Column   int    `json:"column"`
+	Kind     string `json:"kind"`
 	Severity string `json:"severity"`
 	Rule     struct {
 		Name string `json:"name"`
@@ -138,7 +139,8 @@ func normalizeActionlint(raw []actionlintOutput) []normalizer.Finding {
 
 // normalizeOneActionlint maps a single actionlint entry to a Finding.
 func normalizeOneActionlint(r actionlintOutput) normalizer.Finding {
-	fp := actionlintFingerprint(r.Filepath, r.Line, r.Rule.Name)
+	ruleID := actionlintRuleID(r)
+	fp := actionlintFingerprint(r.Filepath, r.Line, ruleID)
 	return normalizer.Finding{
 		ID:          fp,
 		Tool:        "actionlint",
@@ -148,10 +150,19 @@ func normalizeOneActionlint(r actionlintOutput) normalizer.Finding {
 		File:        r.Filepath,
 		Line:        r.Line,
 		Column:      r.Column,
-		RuleID:      r.Rule.Name,
+		RuleID:      ruleID,
 		RuleURL:     "https://rhysd.github.io/actionlint/",
 		Fingerprint: fp,
 	}
+}
+
+// actionlintRuleID prefers the named rule; live actionlint omits rule.name for
+// some kinds (e.g. expression warnings) but always sets kind.
+func actionlintRuleID(r actionlintOutput) string {
+	if r.Rule.Name != "" {
+		return r.Rule.Name
+	}
+	return r.Kind
 }
 
 // actionlintSeverity maps an actionlint severity string to a Muninn Severity.

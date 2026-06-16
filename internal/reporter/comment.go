@@ -182,10 +182,30 @@ func writeGenericFinding(w io.Writer, f normalizer.Finding) error {
 		title = f.RuleID
 	}
 	loc := fmt.Sprintf("%s:%d", f.File, f.Line)
-	_, err := fmt.Fprintf(w,
-		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n%s\n\n",
-		f.Tool, title, loc, f.RuleID, truncateDesc(f.Description))
+	if _, err := fmt.Fprintf(w, "#### [%s] %s\n**File:** `%s`\n", f.Tool, title, loc); err != nil {
+		return err
+	}
+	if f.RuleID != "" {
+		if _, err := fmt.Fprintf(w, "**Rule:** `%s`\n", f.RuleID); err != nil {
+			return err
+		}
+	}
+	if sources := normalizer.InjectionSources(f); len(sources) > 0 {
+		if _, err := fmt.Fprintf(w, "**Sources:** %s\n", formatBacktickList(sources)); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintf(w, "%s\n\n", truncateDesc(f.Description))
 	return err
+}
+
+// formatBacktickList joins values as inline code spans for PR comment fields.
+func formatBacktickList(values []string) string {
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = "`" + v + "`"
+	}
+	return strings.Join(parts, ", ")
 }
 
 // writeDependencyFinding renders an SCA finding (one advisory per package) under

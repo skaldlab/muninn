@@ -74,3 +74,16 @@ func TestPackageAccessors(t *testing.T) {
 		t.Errorf("PackageName(empty) = %q, want empty", got)
 	}
 }
+
+func TestInjectionSources(t *testing.T) {
+	f := Finding{Metadata: map[string]any{
+		"injection_sources": []any{"github.event.pull_request.title"},
+	}}
+	got := InjectionSources(f)
+	if len(got) != 1 || got[0] != "github.event.pull_request.title" {
+		t.Errorf("InjectionSources() = %v, want one title source", got)
+	}
+	if got := InjectionSources(Finding{}); got != nil {
+		t.Errorf("InjectionSources(empty) = %v, want nil", got)
+	}
+}

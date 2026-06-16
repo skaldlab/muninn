@@ -49,12 +49,13 @@ type poutineFinding struct {
 
 // poutineMeta holds per-occurrence location and detail from poutine v1.x.
 type poutineMeta struct {
-	Path    string `json:"path"`
-	Line    int    `json:"line"`
-	Job     string `json:"job"`
-	Step    string `json:"step"`
-	Details string `json:"details"`
-	BlobSHA string `json:"blobsha"`
+	Path             string   `json:"path"`
+	Line             int      `json:"line"`
+	Job              string   `json:"job"`
+	Step             string   `json:"step"`
+	Details          string   `json:"details"`
+	BlobSHA          string   `json:"blobsha"`
+	InjectionSources []string `json:"injection_sources"`
 }
 
 // poutineRepo maps a workflow blob SHA back to on-disk paths (analyze_local output).
@@ -171,12 +172,9 @@ func normalizeModernPoutine(
 		return normalizer.Finding{}, false
 	}
 	file := poutineFile(f.Meta, blobshas)
-	desc := f.Meta.Details
-	if desc == "" {
-		desc = rule.Description
-	}
+	desc := poutineDescription(f.Meta, rule)
 	fp := poutineFingerprint(file, f.Meta.Line, f.Meta.Job, f.Meta.Step, rule.ID)
-	return normalizer.Finding{
+	finding := normalizer.Finding{
 		ID:          fp,
 		Tool:        "poutine",
 		Severity:    poutineSeverity(rule.Level),
@@ -187,7 +185,25 @@ func normalizeModernPoutine(
 		RuleID:      rule.ID,
 		RuleURL:     poutineRuleURL(rule.ID),
 		Fingerprint: fp,
-	}, true
+	}
+	if len(f.Meta.InjectionSources) > 0 {
+		finding.Metadata = map[string]any{
+			"injection_sources": f.Meta.InjectionSources,
+		}
+	}
+	return finding, true
+}
+
+// poutineDescription prefers rule text when meta.details is only a terse
+// sources summary; injection_sources are rendered separately in PR comments.
+func poutineDescription(meta poutineMeta, rule poutineRule) string {
+	if len(meta.InjectionSources) > 0 && rule.Description != "" {
+		return rule.Description
+	}
+	if meta.Details != "" {
+		return meta.Details
+	}
+	return rule.Description
 }
 
 func normalizeLegacyPoutine(f poutineFinding) normalizer.Finding {

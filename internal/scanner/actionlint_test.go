@@ -242,3 +242,18 @@ func TestActionlintRun_Timeout(t *testing.T) {
 		t.Errorf("Run() error = %v, want DeadlineExceeded or Canceled", err)
 	}
 }
+
+func TestActionlintRuleIDKindFallback(t *testing.T) {
+	findings := normalizeActionlint([]actionlintOutput{{
+		Message:  "untrusted input",
+		Filepath: ".github/workflows/ci.yml",
+		Line:     15,
+		Kind:     "expression",
+	}})
+	if len(findings) != 1 {
+		t.Fatalf("len(findings) = %d, want 1", len(findings))
+	}
+	if findings[0].RuleID != "expression" {
+		t.Errorf("RuleID = %q, want expression", findings[0].RuleID)
+	}
+}

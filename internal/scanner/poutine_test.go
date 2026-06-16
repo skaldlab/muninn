@@ -221,6 +221,47 @@ func TestPoutineRun_BinaryNotFound(t *testing.T) {
 	}
 }
 
+func TestPoutineRun_InjectionSources(t *testing.T) {
+	const doc = `{
+  "rules": {
+    "injection": {
+      "id": "injection",
+      "title": "Injection with Arbitrary External Contributor Input",
+      "description": "The pipeline contains an injection into bash or JavaScript.",
+      "level": "warning"
+    }
+  },
+  "findings": [{
+    "rule_id": "injection",
+    "meta": {
+      "path": ".github/workflows/ci.yml",
+      "line": 15,
+      "details": "Sources: github.event.pull_request.title",
+      "injection_sources": ["github.event.pull_request.title"]
+    }
+  }]
+}`
+	p := &Poutine{
+		execFunc: fakePoutineExecFunc(doc, 0),
+		lookPath: lookPathPoutine(),
+	}
+	findings, err := p.Run(context.Background(), ".")
+	if err != nil {
+		t.Fatalf("Run() unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("len(findings) = %d, want 1", len(findings))
+	}
+	f := findings[0]
+	if f.Description != "The pipeline contains an injection into bash or JavaScript." {
+		t.Errorf("Description = %q, want rule description", f.Description)
+	}
+	sources, ok := f.Metadata["injection_sources"].([]string)
+	if !ok || len(sources) != 1 || sources[0] != "github.event.pull_request.title" {
+		t.Errorf("Metadata[injection_sources] = %v, want title source", f.Metadata["injection_sources"])
+	}
+}
+
 func TestPoutineRun_Timeout(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 	defer cancel()
