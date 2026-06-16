@@ -298,7 +298,7 @@ func TestCommentReporter_NonDependencyFindingKeepsToolPrefix(t *testing.T) {
 func TestCommentReporter_PoutineInjectionSourcesFormatted(t *testing.T) {
 	findings := []normalizer.Finding{{
 		ID: "f1", Tool: "poutine", Severity: normalizer.SeverityMedium,
-		Title: "Injection with Arbitrary External Contributor Input",
+		Title:  "Injection with Arbitrary External Contributor Input",
 		RuleID: "injection", File: ".github/workflows/poutine-smoke-test.yml", Line: 15,
 		Fingerprint: "f1",
 		Description: "The pipeline contains an injection into bash or JavaScript.",
