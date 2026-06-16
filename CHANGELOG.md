@@ -11,6 +11,11 @@
   `detectedBy` SARIF result property). A CVE is preferred over GHSA so the same
   vulnerability converges on one id across scanners (#27).
 
+### Fixed
+- PR comment rendering: scanner descriptions are flattened to a single line and
+  their Markdown (code fences, headings) neutralized, so an unbalanced ``` fence
+  can no longer swallow later findings and the footer into a code block.
+
 ## [0.2.0] - 2026-06-15
 
 Supply-chain hardening for the scanner image and signed, verifiable releases
