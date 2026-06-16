@@ -168,23 +168,104 @@ func writeSeveritySection(w io.Writer, label string, findings []normalizer.Findi
 }
 
 func writeCommentFinding(w io.Writer, f normalizer.Finding) error {
+	if normalizer.AdvisoryID(f) != "" {
+		return writeDependencyFinding(w, f)
+	}
+	return writeGenericFinding(w, f)
+}
+
+// writeGenericFinding renders non-dependency findings (secrets, SAST, IaC, CI)
+// attributed to the single scanner that produced them.
+func writeGenericFinding(w io.Writer, f normalizer.Finding) error {
 	title := f.Title
 	if title == "" {
 		title = f.RuleID
 	}
 	loc := fmt.Sprintf("%s:%d", f.File, f.Line)
-	desc := truncateDesc(f.Description)
-	if _, err := fmt.Fprintf(w,
-		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n",
-		f.Tool, title, loc, f.RuleID); err != nil {
+	_, err := fmt.Fprintf(w,
+		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n%s\n\n",
+		f.Tool, title, loc, f.RuleID, truncateDesc(f.Description))
+	return err
+}
+
+// writeDependencyFinding renders an SCA finding (one advisory per package) under
+// a neutral [dependency] heading with structured package/advisory/source detail,
+// so an aggregated finding is not mis-attributed to a single scanner.
+func writeDependencyFinding(w io.Writer, f normalizer.Finding) error {
+	title := f.Title
+	if title == "" {
+		title = f.RuleID
+	}
+	if _, err := fmt.Fprintf(w, "#### [dependency] %s\n", title); err != nil {
 		return err
 	}
-	if len(f.DetectedBy) > 1 {
-		if _, err := fmt.Fprintf(w, "**Detected by:** %s\n", strings.Join(f.DetectedBy, ", ")); err != nil {
+	if line := dependencyPackageLine(f); line != "" {
+		if _, err := fmt.Fprintf(w, "**Package:** %s\n", line); err != nil {
 			return err
 		}
 	}
-	_, err := fmt.Fprintf(w, "%s\n\n", desc)
+	if _, err := fmt.Fprintf(w, "**Advisory:** %s\n**Detected by:** %s\n",
+		dependencyAdvisory(f), strings.Join(detectingScanners(f), ", ")); err != nil {
+		return err
+	}
+	if err := writeFindingSources(w, f); err != nil {
+		return err
+	}
+	_, err := fmt.Fprintf(w, "%s\n\n", truncateDesc(f.Description))
+	return err
+}
+
+// dependencyPackageLine formats "`name` version (ecosystem)" from whatever the
+// scanner provided, omitting absent pieces.
+func dependencyPackageLine(f normalizer.Finding) string {
+	name := normalizer.PackageName(f)
+	if name == "" {
+		return ""
+	}
+	line := "`" + name + "`"
+	if v := normalizer.PackageVersion(f); v != "" {
+		line += " " + v
+	}
+	if eco := normalizer.Ecosystem(f); eco != "" {
+		line += " (" + eco + ")"
+	}
+	return line
+}
+
+// dependencyAdvisory shows the native advisory id, appending the shared CVE when
+// the native id uses a different scheme (e.g. "GHSA-… (CVE-…)").
+func dependencyAdvisory(f normalizer.Finding) string {
+	out := "`" + f.RuleID + "`"
+	if cve := normalizer.AdvisoryID(f); strings.HasPrefix(cve, "CVE-") && !strings.EqualFold(cve, f.RuleID) {
+		out += " (" + cve + ")"
+	}
+	return out
+}
+
+// detectingScanners returns the scanners that reported a finding: the merged
+// DetectedBy set, or the single producing Tool.
+func detectingScanners(f normalizer.Finding) []string {
+	if len(f.DetectedBy) > 0 {
+		return f.DetectedBy
+	}
+	return []string{f.Tool}
+}
+
+// writeFindingSources lists where each scanner saw a merged finding, or the sole
+// location for a single-scanner finding.
+func writeFindingSources(w io.Writer, f normalizer.Finding) error {
+	if len(f.Sources) > 1 {
+		if _, err := fmt.Fprint(w, "**Sources:**\n"); err != nil {
+			return err
+		}
+		for _, s := range f.Sources {
+			if _, err := fmt.Fprintf(w, "- `%s` (%s)\n", s.File, s.Tool); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	_, err := fmt.Fprintf(w, "**Source:** `%s` (%s)\n", f.File, f.Tool)
 	return err
 }
 

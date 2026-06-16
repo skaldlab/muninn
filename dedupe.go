@@ -39,23 +39,12 @@ func advisoryKey(f normalizer.Finding) (string, bool) {
 	if id == "" {
 		return "", false
 	}
-	return id + "\x00" + strings.ToLower(packageName(f)), true
+	return id + "\x00" + strings.ToLower(normalizer.PackageName(f)), true
 }
 
-// packageName reads the affected package from the metadata keys the dependency
-// scanners use (osv-scanner: package; trivy: pkg_name).
-func packageName(f normalizer.Finding) string {
-	for _, k := range []string{"package", "pkg_name"} {
-		if v, ok := f.Metadata[k].(string); ok {
-			return v
-		}
-	}
-	return ""
-}
-
-// mergeFinding folds a duplicate into the canonical finding: it appends the
-// duplicate's scanner to DetectedBy and keeps the merged finding suppressed only
-// when every scanner's variant was suppressed.
+// mergeFinding folds a duplicate into the canonical finding: it records the
+// duplicate's scanner in DetectedBy, its location in Sources, and keeps the
+// merged finding suppressed only when every scanner's variant was suppressed.
 func mergeFinding(primary, dup normalizer.Finding) normalizer.Finding {
 	tools := primary.DetectedBy
 	if len(tools) == 0 {
@@ -64,13 +53,32 @@ func mergeFinding(primary, dup normalizer.Finding) normalizer.Finding {
 	if !containsString(tools, dup.Tool) {
 		tools = append(tools, dup.Tool)
 	}
-	// Only record DetectedBy once more than one distinct scanner is involved;
-	// single-scanner findings convey their origin through Tool alone.
+	sources := primary.Sources
+	if len(sources) == 0 {
+		sources = []normalizer.FindingSource{{Tool: primary.Tool, File: primary.File}}
+	}
+	cand := normalizer.FindingSource{Tool: dup.Tool, File: dup.File}
+	if !containsSource(sources, cand) {
+		sources = append(sources, cand)
+	}
+	// Only record DetectedBy/Sources once more than one distinct scanner is
+	// involved; single-scanner findings convey origin through Tool and File.
 	if len(tools) > 1 {
 		primary.DetectedBy = tools
+		primary.Sources = sources
 	}
 	primary.Suppressed = primary.Suppressed && dup.Suppressed
 	return primary
+}
+
+// containsSource reports whether srcs already contains the tool+file pair v.
+func containsSource(srcs []normalizer.FindingSource, v normalizer.FindingSource) bool {
+	for _, s := range srcs {
+		if s == v {
+			return true
+		}
+	}
+	return false
 }
 
 // containsString reports whether s contains v.

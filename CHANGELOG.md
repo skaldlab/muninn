@@ -10,6 +10,11 @@
   (surfaced in the JSON report, the PR comment's "Detected by" line, and a
   `detectedBy` SARIF result property). A CVE is preferred over GHSA so the same
   vulnerability converges on one id across scanners (#27).
+- Richer dependency finding rendering: aggregated dependency findings now appear
+  under a neutral `[dependency]` heading (instead of a single scanner's name)
+  with `Package`, `Advisory` (including the shared CVE), `Detected by`, and a
+  `Sources` list showing where each scanner observed it. A new `sources` field on
+  the finding (per-scanner `tool` + `file`) backs the JSON report (#27).
 
 ### Fixed
 - PR comment rendering: scanner descriptions are flattened to a single line and

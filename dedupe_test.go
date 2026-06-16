@@ -31,6 +31,13 @@ func TestDedupeByAdvisory_MergesCrossScanner(t *testing.T) {
 	if len(out[0].DetectedBy) != 2 || out[0].DetectedBy[0] != want[0] || out[0].DetectedBy[1] != want[1] {
 		t.Errorf("DetectedBy = %v, want %v", out[0].DetectedBy, want)
 	}
+	wantSources := []normalizer.FindingSource{
+		{Tool: "osv-scanner", File: "package-lock.json"},
+		{Tool: "trivy", File: "Dockerfile"},
+	}
+	if len(out[0].Sources) != 2 || out[0].Sources[0] != wantSources[0] || out[0].Sources[1] != wantSources[1] {
+		t.Errorf("Sources = %v, want %v", out[0].Sources, wantSources)
+	}
 }
 
 func TestDedupeByAdvisory_DifferentPackagesNotMerged(t *testing.T) {
@@ -93,6 +100,9 @@ func TestDedupeByAdvisory_SameToolNotListedTwice(t *testing.T) {
 	}
 	if out[0].DetectedBy != nil {
 		t.Errorf("DetectedBy = %v, want nil for single-scanner finding", out[0].DetectedBy)
+	}
+	if out[0].Sources != nil {
+		t.Errorf("Sources = %v, want nil for single-scanner finding", out[0].Sources)
 	}
 }
 

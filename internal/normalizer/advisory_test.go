@@ -49,3 +49,28 @@ func TestAdvisoryID_NonAdvisoryIsEmpty(t *testing.T) {
 		}
 	}
 }
+
+func TestPackageAccessors(t *testing.T) {
+	osv := Finding{Metadata: map[string]any{"package": "lodash", "version": "4.17.20", "ecosystem": "npm"}}
+	if got := PackageName(osv); got != "lodash" {
+		t.Errorf("PackageName(osv) = %q, want lodash", got)
+	}
+	if got := PackageVersion(osv); got != "4.17.20" {
+		t.Errorf("PackageVersion(osv) = %q, want 4.17.20", got)
+	}
+	if got := Ecosystem(osv); got != "npm" {
+		t.Errorf("Ecosystem(osv) = %q, want npm", got)
+	}
+
+	trivy := Finding{Metadata: map[string]any{"pkg_name": "openssl", "installed_version": "1.1.1"}}
+	if got := PackageName(trivy); got != "openssl" {
+		t.Errorf("PackageName(trivy) = %q, want openssl", got)
+	}
+	if got := PackageVersion(trivy); got != "1.1.1" {
+		t.Errorf("PackageVersion(trivy) = %q, want 1.1.1", got)
+	}
+
+	if got := PackageName(Finding{}); got != "" {
+		t.Errorf("PackageName(empty) = %q, want empty", got)
+	}
+}

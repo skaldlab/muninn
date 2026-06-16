@@ -54,6 +54,35 @@ func isAdvisoryID(id string) bool {
 	return false
 }
 
+// PackageName returns the affected package name from the metadata keys the
+// dependency scanners use (osv-scanner: package; trivy: pkg_name), or "".
+func PackageName(f Finding) string {
+	return metaString(f.Metadata, "package", "pkg_name")
+}
+
+// PackageVersion returns the affected package version (osv-scanner: version;
+// trivy: installed_version), or "".
+func PackageVersion(f Finding) string {
+	return metaString(f.Metadata, "version", "installed_version")
+}
+
+// Ecosystem returns the package ecosystem (e.g. "npm", "PyPI") when a scanner
+// records it (osv-scanner), or "".
+func Ecosystem(f Finding) string {
+	return metaString(f.Metadata, "ecosystem")
+}
+
+// metaString returns the first metadata value among keys that is a non-empty
+// string, or "" when none match.
+func metaString(meta map[string]any, keys ...string) string {
+	for _, k := range keys {
+		if v, ok := meta[k].(string); ok && v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
 // metaStringSlice extracts a metadata value that is a list of strings, tolerating
 // both the native []string and the []any shape a JSON round-trip would produce.
 func metaStringSlice(meta map[string]any, key string) []string {

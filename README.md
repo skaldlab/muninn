@@ -48,9 +48,21 @@ once — OSV-Scanner flags it in a lockfile while Trivy flags it in a container
 layer. Muninn collapses these into a single finding keyed on the advisory id
 (a `CVE-…` is preferred over `GHSA-…` so the same vulnerability converges across
 scanners) scoped to the affected package, so distinct packages sharing a CVE
-stay separate. The scanners that reported it are listed under `detected_by` in
-the JSON report, a **Detected by** line in the PR comment, and a `detectedBy`
-property on the SARIF result.
+stay separate.
+
+Because an aggregated finding no longer belongs to one tool, dependency findings
+render under a neutral `[dependency]` heading (rather than `[osv-scanner]`) with
+structured detail, and the scanners are surfaced via attribution instead:
+
+- **PR comment** — `Package`, `Advisory` (with the shared CVE in parentheses),
+  `Detected by`, and a `Sources` list showing where each scanner saw it
+  (e.g. `package-lock.json (osv-scanner)`, `node:18 (trivy)`).
+- **JSON report** — `detected_by` (the scanner list) and `sources` (per-scanner
+  `tool` + `file` pairs).
+- **SARIF** — a `detectedBy` property on the result.
+
+The severity summary counts these aggregated unique findings, not raw scanner
+hits, because deduplication runs before any report is written.
 
 ---
 
