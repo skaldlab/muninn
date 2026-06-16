@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.3.1] - 2026-06-16
+
+### Fixed
+- Poutine v1.x JSON parsing: findings from poutine 1.1.6+ (`rule_id`, `meta`,
+  `rules`, `blobshas`) now populate title, rule, and file in PR comments instead
+  of empty shells (`File: :0`, `Rule: ``) (#41).
+- Actionlint PR comments: fall back to `kind` (e.g. `expression`) when
+  `rule.name` is absent; omit empty Rule lines.
+- Poutine injection findings: render `injection_sources` as formatted
+  **Sources** instead of plain `meta.details` text.
+
+### Changed
+- PR comment layout: shared field helpers; non-dependency findings follow
+  File → Rule → optional extras → description; single-scanner dependency
+  findings use **File** instead of a redundant **Source** line.
+
 ## [0.3.0] - 2026-06-16
 
 ### Added
