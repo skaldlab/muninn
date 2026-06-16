@@ -60,6 +60,47 @@ jobs:
       - name: Run integration tests
         run: go test -tags integration -v ./integration/...
 
+      # Issue #27 evidence: run only the two SCA scanners (osv-scanner + trivy)
+      # against the fixture's lodash lockfile and surface the merged, cross-scanner
+      # findings as a job summary + downloadable report.
+      - name: Cross-scanner dedup evidence (issue #27)
+        if: always()
+        run: |
+          go build -o /tmp/muninn .
+          cat > /tmp/dedup.yml <<'EOF'
+          version: 1
+          fail-on: critical
+          scanners:
+            gitleaks: { enabled: false }
+            zizmor: { enabled: false }
+            actionlint: { enabled: false }
+            semgrep: { enabled: false }
+            checkov: { enabled: false }
+            poutine: { enabled: false }
+            osv-scanner: { enabled: true }
+            trivy: { enabled: true, severity: [CRITICAL, HIGH], ignore-unfixed: true }
+          EOF
+          /tmp/muninn --target testdata/fixture-repo --config /tmp/dedup.yml --output json || true
+          {
+            echo "## Cross-scanner deduplication — issue #27"
+            echo
+            echo "Real \`osv-scanner\` + \`trivy\` run against \`testdata/fixture-repo\` (a \`lodash\` lockfile both scanners flag)."
+            echo
+            echo "- Findings after dedup: **$(jq '.findings | length' muninn.json)**"
+            echo "- Findings reported by more than one scanner (merged): **$(jq '[.findings[] | select(.detected_by != null)] | length' muninn.json)**"
+            echo
+            echo "| Advisory (rule_id) | Aliases | Severity | Package | Detected by |"
+            echo "|---|---|---|---|---|"
+            jq -r '.findings[] | select(.detected_by != null) | "| \(.rule_id) | \((.metadata.aliases // []) | join(", ")) | \(.severity) | \(.metadata.package // .metadata.pkg_name // "-") | \(.detected_by | join(", ")) |"' muninn.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload dedup evidence report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dedup-evidence
+          path: muninn.json
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
