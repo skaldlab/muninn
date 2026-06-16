@@ -1,0 +1,10 @@
+# TEMP: poutine PR comment smoke test — remove before merge.
+name: Poutine smoke test
+on:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
