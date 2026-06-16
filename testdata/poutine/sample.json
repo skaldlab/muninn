@@ -1,52 +1,65 @@
 {
+  "rules": {
+    "injection": {
+      "id": "injection",
+      "title": "Injection into GitHub Actions runner context",
+      "description": "Detects injection of untrusted user-controlled input into the GitHub Actions runner context via expression syntax, which can lead to arbitrary code execution.",
+      "level": "error"
+    },
+    "dangerous-workflow-trigger": {
+      "id": "dangerous-workflow-trigger",
+      "title": "Dangerous workflow trigger",
+      "description": "The pull_request_target event grants write permissions and access to secrets to workflows triggered from forks, making it dangerous when combined with checkouts of untrusted code.",
+      "level": "error"
+    },
+    "unpinned-action": {
+      "id": "unpinned-action",
+      "title": "Unpinned action in workflow",
+      "description": "Actions referenced by mutable tags (e.g. v1, main) can be silently updated by the action author, enabling supply-chain attacks. Pin actions to a full-length commit SHA.",
+      "level": "warning"
+    }
+  },
   "findings": [
     {
-      "rule": {
-        "id": "injection",
-        "title": "Injection into GitHub Actions runner context",
-        "description": "Detects injection of untrusted user-controlled input into the GitHub Actions runner context via expression syntax, which can lead to arbitrary code execution.",
-        "severity": "critical"
-      },
-      "occurrence": {
-        "file": ".github/workflows/ci.yml",
-        "startLine": 24,
-        "startColumn": 1,
-        "endLine": 24,
-        "snippet": "run: echo ${{ github.event.pull_request.title }}"
-      },
-      "fingerprint": "a1b2c3d4e5f60001"
+      "rule_id": "injection",
+      "purl": "pkg:github/example/repo",
+      "meta": {
+        "line": 24,
+        "details": "run: echo ${{ github.event.pull_request.title }}",
+        "blobsha": "ci_workflow_blob"
+      }
     },
     {
-      "rule": {
-        "id": "dangerous-workflow-trigger",
-        "title": "Dangerous workflow trigger",
-        "description": "The pull_request_target event grants write permissions and access to secrets to workflows triggered from forks, making it dangerous when combined with checkouts of untrusted code.",
-        "severity": "high"
-      },
-      "occurrence": {
-        "file": ".github/workflows/deploy.yml",
-        "startLine": 3,
-        "startColumn": 1,
-        "endLine": 3,
-        "snippet": "on: pull_request_target"
-      },
-      "fingerprint": ""
+      "rule_id": "dangerous-workflow-trigger",
+      "purl": "pkg:github/example/repo",
+      "meta": {
+        "path": ".github/workflows/deploy.yml",
+        "line": 3,
+        "details": "on: pull_request_target"
+      }
     },
     {
-      "rule": {
-        "id": "unpinned-action",
-        "title": "Unpinned action in workflow",
-        "description": "Actions referenced by mutable tags (e.g. v1, main) can be silently updated by the action author, enabling supply-chain attacks. Pin actions to a full-length commit SHA.",
-        "severity": "medium"
-      },
-      "occurrence": {
-        "file": ".github/workflows/ci.yml",
-        "startLine": 12,
-        "startColumn": 14,
-        "endLine": 12,
-        "snippet": "uses: actions/checkout@v4"
-      },
-      "fingerprint": ""
+      "rule_id": "unpinned-action",
+      "purl": "pkg:github/example/repo",
+      "meta": {
+        "path": ".github/workflows/ci.yml",
+        "line": 12,
+        "details": "uses: actions/checkout@v4"
+      }
     }
-  ]
+  ],
+  "blobshas": {
+    "ci_workflow_blob": [
+      {
+        "repo_name": "example/repo",
+        "purl": "pkg:github/example/repo",
+        "branch_infos": [
+          {
+            "branch_name": "main",
+            "file_path": [".github/workflows/ci.yml"]
+          }
+        ]
+      }
+    ]
+  }
 }

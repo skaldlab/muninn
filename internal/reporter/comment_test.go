@@ -242,7 +242,7 @@ func TestCommentReporter_SingleScannerDependencyFinding(t *testing.T) {
 		"**Package:** `openssl` 1.1.1",
 		"**Advisory:** `CVE-2021-0001`",
 		"**Detected by:** trivy",
-		"**Source:** `node:18` (trivy)",
+		"**File:** `node:18`",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("single-scanner dependency comment missing %q:\n%s", want, out)
@@ -290,7 +290,91 @@ func TestCommentReporter_NonDependencyFindingKeepsToolPrefix(t *testing.T) {
 	if !strings.Contains(out, "#### [gitleaks] AWS key leaked") {
 		t.Errorf("non-dependency finding should keep its [tool] prefix:\n%s", out)
 	}
-	if strings.Contains(out, "Detected by:") || strings.Contains(out, "**Source") {
-		t.Errorf("non-dependency finding should not show detected-by/sources block:\n%s", out)
+	if strings.Contains(out, "Detected by:") {
+		t.Errorf("non-dependency finding should not show detected-by block:\n%s", out)
+	}
+}
+
+func TestCommentReporter_PoutineInjectionSourcesFormatted(t *testing.T) {
+	findings := []normalizer.Finding{{
+		ID: "f1", Tool: "poutine", Severity: normalizer.SeverityMedium,
+		Title:  "Injection with Arbitrary External Contributor Input",
+		RuleID: "injection", File: ".github/workflows/poutine-smoke-test.yml", Line: 15,
+		Fingerprint: "f1",
+		Description: "The pipeline contains an injection into bash or JavaScript.",
+		Metadata: map[string]any{
+			"injection_sources": []string{"github.event.pull_request.title"},
+		},
+	}}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	for _, want := range []string{
+		"**Rule:** `injection`",
+		"**Sources:** `github.event.pull_request.title`",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("poutine comment missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "Sources: github.event") {
+		t.Errorf("injection sources must not appear as plain description text:\n%s", out)
+	}
+}
+
+func TestCommentReporter_ActionlintKindAsRule(t *testing.T) {
+	findings := []normalizer.Finding{{
+		ID: "f1", Tool: "actionlint", Severity: normalizer.SeverityLow,
+		Title: "untrusted input warning", RuleID: "expression",
+		File: ".github/workflows/ci.yml", Line: 15, Fingerprint: "f1",
+		Description: "untrusted input warning",
+	}}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "**Rule:** `expression`") {
+		t.Errorf("actionlint kind fallback should render as rule:\n%s", out)
+	}
+	if strings.Contains(out, "**Rule:** ``") {
+		t.Errorf("actionlint comment must not show empty rule:\n%s", out)
+	}
+}
+
+func TestCommentReporter_GenericFindingSkeleton(t *testing.T) {
+	findings := []normalizer.Finding{{
+		ID: "f1", Tool: "zizmor", Severity: normalizer.SeverityCritical,
+		Title: "unpinned action reference", RuleID: "zizmor/unpinned-uses",
+		File: ".github/workflows/ci.yml", Line: 10, Fingerprint: "f1",
+		Description: "action is not pinned to a hash",
+	}}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	idxFile := strings.Index(out, "**File:**")
+	idxRule := strings.Index(out, "**Rule:**")
+	idxDesc := strings.Index(out, "action is not pinned")
+	if idxFile < 0 || idxRule < 0 || idxDesc < 0 {
+		t.Fatalf("generic finding missing expected fields:\n%s", out)
+	}
+	if !(idxFile < idxRule && idxRule < idxDesc) {
+		t.Errorf("generic finding fields out of order (want File → Rule → description):\n%s", out)
+	}
+	for _, want := range []string{
+		"#### [zizmor] unpinned action reference",
+		"**File:** `.github/workflows/ci.yml:10`",
+		"**Rule:** `zizmor/unpinned-uses`",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("generic finding missing %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(out, "**Package:**") || strings.Contains(out, "**Detected by:**") {
+		t.Errorf("generic finding must not use dependency-only fields:\n%s", out)
 	}
 }

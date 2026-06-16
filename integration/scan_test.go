@@ -308,7 +308,37 @@ func scannerChecks() []struct {
 		{"trivy", func(s string) bool {
 			return strings.Contains(s, "lodash") || strings.Contains(s, "cve-")
 		}, "lodash vulnerability"},
-		{"poutine", func(s string) bool { return true }, "any poutine finding"},
+		{"poutine", func(s string) bool {
+			return strings.Contains(s, ".github") || strings.Contains(s, "workflow") ||
+				strings.Contains(s, "injection") || strings.Contains(s, "unpinned")
+		}, "workflow supply-chain finding with location"},
+	}
+}
+
+// assertPoutineFindingsPopulated guards against empty poutine shells (rule_id/title/file
+// all blank) when the v1.x JSON schema is not parsed correctly.
+func assertPoutineFindingsPopulated(t *testing.T, findings []normalizer.Finding) {
+	t.Helper()
+	var poutineFindings []normalizer.Finding
+	for _, f := range findings {
+		if f.Tool == "poutine" {
+			poutineFindings = append(poutineFindings, f)
+		}
+	}
+	if len(poutineFindings) == 0 {
+		t.Error("expected at least 1 poutine finding, got 0")
+		return
+	}
+	for i, f := range poutineFindings {
+		if f.RuleID == "" {
+			t.Errorf("poutine findings[%d].RuleID is empty", i)
+		}
+		if f.Title == "" {
+			t.Errorf("poutine findings[%d].Title is empty (rule=%s)", i, f.RuleID)
+		}
+		if f.File == "" {
+			t.Errorf("poutine findings[%d].File is empty (rule=%s)", i, f.RuleID)
+		}
 	}
 }
 
@@ -324,6 +354,7 @@ func assertScannerFindings(t *testing.T, findings []normalizer.Finding) {
 			t.Errorf("expected %s finding matching %q", tc.tool, tc.desc)
 		}
 	}
+	assertPoutineFindingsPopulated(t, findings)
 }
 
 // TestFullScan runs Muninn against the fixture repo and verifies known

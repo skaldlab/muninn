@@ -110,7 +110,7 @@ func TestPoutineRun_WithFindings(t *testing.T) {
 		}
 	}
 
-	// Finding 0: injection, severity=critical → critical, fixture fingerprint preserved.
+	// Finding 0: injection, level=error → critical; path resolved via blobshas.
 	f0 := findings[0]
 	if f0.Severity != normalizer.SeverityCritical {
 		t.Errorf("findings[0].Severity = %q, want critical", f0.Severity)
@@ -124,31 +124,69 @@ func TestPoutineRun_WithFindings(t *testing.T) {
 	if f0.Line != 24 {
 		t.Errorf("findings[0].Line = %d, want 24", f0.Line)
 	}
-	// Fixture supplies a fingerprint; normalizer must preserve it.
-	if f0.Fingerprint != "a1b2c3d4e5f60001" {
-		t.Errorf("findings[0].Fingerprint = %q, want a1b2c3d4e5f60001", f0.Fingerprint)
+	if f0.Description != "run: echo ${{ github.event.pull_request.title }}" {
+		t.Errorf("findings[0].Description = %q, want meta.details", f0.Description)
+	}
+	if f0.Fingerprint == "" {
+		t.Error("findings[0].Fingerprint is empty, want generated value")
 	}
 	const wantURL0 = "https://github.com/boostsecurityio/poutine/blob/main/docs/rules/injection.md"
 	if f0.RuleURL != wantURL0 {
 		t.Errorf("findings[0].RuleURL = %q, want %q", f0.RuleURL, wantURL0)
 	}
 
-	// Finding 1: dangerous-workflow-trigger, severity=high, no fixture fingerprint.
+	// Finding 1: dangerous-workflow-trigger, level=error → critical.
 	f1 := findings[1]
-	if f1.Severity != normalizer.SeverityHigh {
-		t.Errorf("findings[1].Severity = %q, want high", f1.Severity)
+	if f1.Severity != normalizer.SeverityCritical {
+		t.Errorf("findings[1].Severity = %q, want critical", f1.Severity)
 	}
 	if f1.Fingerprint == "" {
 		t.Error("findings[1].Fingerprint is empty, want generated value")
 	}
 
-	// Finding 2: unpinned-action, severity=medium, no fixture fingerprint.
+	// Finding 2: unpinned-action, level=warning → medium.
 	f2 := findings[2]
 	if f2.Severity != normalizer.SeverityMedium {
 		t.Errorf("findings[2].Severity = %q, want medium", f2.Severity)
 	}
-	if f2.Fingerprint == "" {
-		t.Error("findings[2].Fingerprint is empty, want generated value")
+}
+
+func TestPoutineRun_SkipsEmptyFindings(t *testing.T) {
+	const doc = `{"rules":{},"findings":[{"rule_id":"","meta":{}},{"rule_id":"x","meta":{}}]}`
+	p := &Poutine{
+		execFunc: fakePoutineExecFunc(doc, 0),
+		lookPath: lookPathPoutine(),
+	}
+	findings, err := p.Run(context.Background(), ".")
+	if err != nil {
+		t.Fatalf("Run() unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("len(findings) = %d, want 1 (empty rule_id skipped)", len(findings))
+	}
+	if findings[0].RuleID != "x" {
+		t.Errorf("RuleID = %q, want x", findings[0].RuleID)
+	}
+}
+
+func TestNormalizeLegacyPoutineFormat(t *testing.T) {
+	const legacy = `{
+		"findings":[{
+			"rule":{"id":"injection","title":"Injection","description":"desc","severity":"high"},
+			"occurrence":{"file":"workflow.yml","startLine":10,"startColumn":1},
+			"fingerprint":"legacy-fp"
+		}]
+	}`
+	doc, err := parsePoutineJSON([]byte(legacy))
+	if err != nil {
+		t.Fatalf("parsePoutineJSON: %v", err)
+	}
+	out := normalizePoutine(doc)
+	if len(out) != 1 {
+		t.Fatalf("len = %d, want 1", len(out))
+	}
+	if out[0].RuleID != "injection" || out[0].File != "workflow.yml" || out[0].Fingerprint != "legacy-fp" {
+		t.Errorf("legacy finding = %+v", out[0])
 	}
 }
 
@@ -180,6 +218,47 @@ func TestPoutineRun_BinaryNotFound(t *testing.T) {
 	const want = "poutine: binary not found on PATH"
 	if err.Error() != want {
 		t.Errorf("Run() error = %q, want %q", err.Error(), want)
+	}
+}
+
+func TestPoutineRun_InjectionSources(t *testing.T) {
+	const doc = `{
+  "rules": {
+    "injection": {
+      "id": "injection",
+      "title": "Injection with Arbitrary External Contributor Input",
+      "description": "The pipeline contains an injection into bash or JavaScript.",
+      "level": "warning"
+    }
+  },
+  "findings": [{
+    "rule_id": "injection",
+    "meta": {
+      "path": ".github/workflows/ci.yml",
+      "line": 15,
+      "details": "Sources: github.event.pull_request.title",
+      "injection_sources": ["github.event.pull_request.title"]
+    }
+  }]
+}`
+	p := &Poutine{
+		execFunc: fakePoutineExecFunc(doc, 0),
+		lookPath: lookPathPoutine(),
+	}
+	findings, err := p.Run(context.Background(), ".")
+	if err != nil {
+		t.Fatalf("Run() unexpected error: %v", err)
+	}
+	if len(findings) != 1 {
+		t.Fatalf("len(findings) = %d, want 1", len(findings))
+	}
+	f := findings[0]
+	if f.Description != "The pipeline contains an injection into bash or JavaScript." {
+		t.Errorf("Description = %q, want rule description", f.Description)
+	}
+	sources, ok := f.Metadata["injection_sources"].([]string)
+	if !ok || len(sources) != 1 || sources[0] != "github.event.pull_request.title" {
+		t.Errorf("Metadata[injection_sources] = %v, want title source", f.Metadata["injection_sources"])
 	}
 }
 

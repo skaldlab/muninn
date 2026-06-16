@@ -72,6 +72,12 @@ func Ecosystem(f Finding) string {
 	return metaString(f.Metadata, "ecosystem")
 }
 
+// InjectionSources returns untrusted GitHub Actions context paths that poutine
+// recorded for an injection finding, or nil when absent.
+func InjectionSources(f Finding) []string {
+	return metaStringSlice(f.Metadata, "injection_sources")
+}
+
 // metaString returns the first metadata value among keys that is a non-empty
 // string, or "" when none match.
 func metaString(meta map[string]any, keys ...string) string {

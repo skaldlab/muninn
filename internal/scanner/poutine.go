@@ -12,14 +12,27 @@ import (
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
 
-// poutineOutput mirrors the top-level JSON object poutine writes to stdout.
+// poutineOutput mirrors the JSON document poutine v1.x writes to stdout.
 type poutineOutput struct {
-	Findings []poutineFinding `json:"findings"`
+	Findings []poutineFinding         `json:"findings"`
+	Rules    map[string]poutineRule   `json:"rules"`
+	BlobSHAs map[string][]poutineRepo `json:"blobshas"`
 }
 
-// poutineFinding mirrors one entry in poutine's findings array.
-// Only the fields Muninn needs are mapped; unknown fields are silently ignored.
+// poutineRule holds rule metadata keyed in the top-level rules map.
+type poutineRule struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Level       string `json:"level"`
+}
+
+// poutineFinding mirrors one entry in poutine's findings array (v1.x schema).
 type poutineFinding struct {
+	RuleID string      `json:"rule_id"`
+	Purl   string      `json:"purl"`
+	Meta   poutineMeta `json:"meta"`
+	// Legacy pre-v1 JSON fields; kept so older fixture/output shapes still parse.
 	Rule struct {
 		ID          string `json:"id"`
 		Title       string `json:"title"`
@@ -34,16 +47,30 @@ type poutineFinding struct {
 	Fingerprint string `json:"fingerprint"`
 }
 
+// poutineMeta holds per-occurrence location and detail from poutine v1.x.
+type poutineMeta struct {
+	Path             string   `json:"path"`
+	Line             int      `json:"line"`
+	Job              string   `json:"job"`
+	Step             string   `json:"step"`
+	Details          string   `json:"details"`
+	BlobSHA          string   `json:"blobsha"`
+	InjectionSources []string `json:"injection_sources"`
+}
+
+// poutineRepo maps a workflow blob SHA back to on-disk paths (analyze_local output).
+type poutineRepo struct {
+	BranchInfos []poutineBranchInfo `json:"branch_infos"`
+}
+
+type poutineBranchInfo struct {
+	FilePath []string `json:"file_path"`
+}
+
 // Poutine wraps the poutine supply-chain pipeline risk scanner.
 // See: https://github.com/boostsecurityio/poutine
 type Poutine struct {
-	// execFunc creates the exec.Cmd for the poutine subprocess.
-	// Tests inject a fake that writes fixture JSON to stdout without
-	// requiring a real binary on PATH.
 	execFunc func(ctx context.Context, name string, args ...string) *exec.Cmd
-
-	// lookPath resolves a binary name on PATH.
-	// Tests inject a fake to control IsAvailable() without installing poutine.
 	lookPath func(string) (string, error)
 }
 
@@ -72,8 +99,6 @@ func (p *Poutine) Run(ctx context.Context, target string) ([]normalizer.Finding,
 	if !p.IsAvailable() {
 		return nil, fmt.Errorf("poutine: binary not found on PATH")
 	}
-	// Skip gracefully when the target directory does not exist rather than
-	// letting poutine fail with an opaque error.
 	if _, err := os.Stat(target); os.IsNotExist(err) {
 		return nil, nil
 	}
@@ -84,9 +109,6 @@ func (p *Poutine) Run(ctx context.Context, target string) ([]normalizer.Finding,
 	return normalizePoutine(doc), nil
 }
 
-// execute runs the poutine subprocess and captures its JSON output from stdout.
-// Poutine exits 0 for both the no-findings and findings-present cases; any
-// non-zero exit indicates a real error.
 func (p *Poutine) execute(ctx context.Context, target string) (*poutineOutput, error) {
 	cmd := p.execFunc(ctx, "poutine", "analyze_local", target, "--format", "json")
 	out, err := cmd.Output()
@@ -99,7 +121,6 @@ func (p *Poutine) execute(ctx context.Context, target string) (*poutineOutput, e
 	return parsePoutineJSON(out)
 }
 
-// parsePoutineJSON unmarshals the JSON object poutine writes to stdout.
 func parsePoutineJSON(data []byte) (*poutineOutput, error) {
 	if len(data) == 0 {
 		return &poutineOutput{}, nil
@@ -111,48 +132,131 @@ func parsePoutineJSON(data []byte) (*poutineOutput, error) {
 	return &doc, nil
 }
 
-// normalizePoutine converts a parsed poutine document to the unified Finding schema.
 func normalizePoutine(doc *poutineOutput) []normalizer.Finding {
 	if doc == nil {
 		return nil
 	}
 	out := make([]normalizer.Finding, 0, len(doc.Findings))
 	for _, f := range doc.Findings {
-		out = append(out, normalizeOnePoutine(f))
+		if finding, ok := normalizeOnePoutine(f, doc.Rules, doc.BlobSHAs); ok {
+			out = append(out, finding)
+		}
 	}
 	return out
 }
 
-// normalizeOnePoutine maps a single poutine finding to a Finding.
-func normalizeOnePoutine(f poutineFinding) normalizer.Finding {
+func normalizeOnePoutine(
+	f poutineFinding,
+	rules map[string]poutineRule,
+	blobshas map[string][]poutineRepo,
+) (normalizer.Finding, bool) {
+	if f.RuleID != "" {
+		return normalizeModernPoutine(f, rules, blobshas)
+	}
+	if f.Rule.ID != "" {
+		return normalizeLegacyPoutine(f), true
+	}
+	return normalizer.Finding{}, false
+}
+
+func normalizeModernPoutine(
+	f poutineFinding,
+	rules map[string]poutineRule,
+	blobshas map[string][]poutineRepo,
+) (normalizer.Finding, bool) {
+	rule := rules[f.RuleID]
+	if rule.ID == "" {
+		rule.ID = f.RuleID
+	}
+	if rule.ID == "" {
+		return normalizer.Finding{}, false
+	}
+	file := poutineFile(f.Meta, blobshas)
+	desc := poutineDescription(f.Meta, rule)
+	fp := poutineFingerprint(file, f.Meta.Line, f.Meta.Job, f.Meta.Step, rule.ID)
+	finding := normalizer.Finding{
+		ID:          fp,
+		Tool:        "poutine",
+		Severity:    poutineSeverity(rule.Level),
+		Title:       rule.Title,
+		Description: desc,
+		File:        file,
+		Line:        f.Meta.Line,
+		RuleID:      rule.ID,
+		RuleURL:     poutineRuleURL(rule.ID),
+		Fingerprint: fp,
+	}
+	if len(f.Meta.InjectionSources) > 0 {
+		finding.Metadata = map[string]any{
+			"injection_sources": f.Meta.InjectionSources,
+		}
+	}
+	return finding, true
+}
+
+// poutineDescription prefers rule text when meta.details is only a terse
+// sources summary; injection_sources are rendered separately in PR comments.
+func poutineDescription(meta poutineMeta, rule poutineRule) string {
+	if len(meta.InjectionSources) > 0 && rule.Description != "" {
+		return rule.Description
+	}
+	if meta.Details != "" {
+		return meta.Details
+	}
+	return rule.Description
+}
+
+func normalizeLegacyPoutine(f poutineFinding) normalizer.Finding {
 	fp := f.Fingerprint
 	if fp == "" {
-		fp = poutineFingerprint(f.Occurrence.File, f.Occurrence.StartLine, f.Rule.ID)
+		fp = poutineFingerprint(f.Occurrence.File, f.Occurrence.StartLine, "", "", f.Rule.ID)
 	}
+	desc := f.Rule.Description
 	return normalizer.Finding{
 		ID:          fp,
 		Tool:        "poutine",
 		Severity:    poutineSeverity(f.Rule.Severity),
 		Title:       f.Rule.Title,
-		Description: f.Rule.Description,
+		Description: desc,
 		File:        f.Occurrence.File,
 		Line:        f.Occurrence.StartLine,
 		Column:      f.Occurrence.StartColumn,
 		RuleID:      f.Rule.ID,
-		RuleURL:     "https://github.com/boostsecurityio/poutine/blob/main/docs/rules/" + f.Rule.ID + ".md",
+		RuleURL:     poutineRuleURL(f.Rule.ID),
 		Fingerprint: fp,
 	}
 }
 
-// poutineSeverity maps a poutine severity string directly to a Muninn Severity.
-// Poutine uses the same vocabulary as Muninn for the four main levels.
-func poutineSeverity(severity string) normalizer.Severity {
-	switch severity {
-	case "critical":
+func poutineFile(meta poutineMeta, blobshas map[string][]poutineRepo) string {
+	if meta.Path != "" {
+		return meta.Path
+	}
+	if meta.BlobSHA == "" {
+		return ""
+	}
+	for _, repo := range blobshas[meta.BlobSHA] {
+		for _, branch := range repo.BranchInfos {
+			if len(branch.FilePath) > 0 {
+				return branch.FilePath[0]
+			}
+		}
+	}
+	return ""
+}
+
+func poutineRuleURL(ruleID string) string {
+	return "https://github.com/boostsecurityio/poutine/blob/main/docs/rules/" + ruleID + ".md"
+}
+
+// poutineSeverity maps poutine rule levels (error/warning/note) and legacy
+// severity strings (critical/high/medium/low) to Muninn severities.
+func poutineSeverity(level string) normalizer.Severity {
+	switch level {
+	case "critical", "error":
 		return normalizer.SeverityCritical
 	case "high":
 		return normalizer.SeverityHigh
-	case "medium":
+	case "medium", "warning":
 		return normalizer.SeverityMedium
 	case "low":
 		return normalizer.SeverityLow
@@ -161,9 +265,7 @@ func poutineSeverity(severity string) normalizer.Severity {
 	}
 }
 
-// poutineFingerprint returns the first 16 hex chars of SHA-256(poutine:file:line:ruleID).
-// Used when poutine does not supply a fingerprint for the finding.
-func poutineFingerprint(file string, line int, ruleID string) string {
-	sum := sha256.Sum256([]byte(fmt.Sprintf("poutine:%s:%d:%s", file, line, ruleID)))
+func poutineFingerprint(file string, line int, job, step, ruleID string) string {
+	sum := sha256.Sum256([]byte(fmt.Sprintf("poutine:%s:%d:%s:%s:%s", file, line, job, step, ruleID)))
 	return fmt.Sprintf("%x", sum[:8])
 }

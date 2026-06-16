@@ -174,38 +174,87 @@ func writeCommentFinding(w io.Writer, f normalizer.Finding) error {
 	return writeGenericFinding(w, f)
 }
 
-// writeGenericFinding renders non-dependency findings (secrets, SAST, IaC, CI)
-// attributed to the single scanner that produced them.
-func writeGenericFinding(w io.Writer, f normalizer.Finding) error {
-	title := f.Title
-	if title == "" {
-		title = f.RuleID
+func findingTitle(f normalizer.Finding) string {
+	if f.Title != "" {
+		return f.Title
 	}
-	loc := fmt.Sprintf("%s:%d", f.File, f.Line)
-	_, err := fmt.Fprintf(w,
-		"#### [%s] %s\n**File:** `%s`\n**Rule:** `%s`\n%s\n\n",
-		f.Tool, title, loc, f.RuleID, truncateDesc(f.Description))
+	return f.RuleID
+}
+
+// findingLocation formats file:line when a line number is present.
+func findingLocation(f normalizer.Finding) string {
+	if f.File == "" {
+		return ""
+	}
+	if f.Line > 0 {
+		return fmt.Sprintf("%s:%d", f.File, f.Line)
+	}
+	return f.File
+}
+
+func writeCommentHeading(w io.Writer, tag, title string) error {
+	_, err := fmt.Fprintf(w, "#### [%s] %s\n", tag, title)
 	return err
 }
 
-// writeDependencyFinding renders an SCA finding (one advisory per package) under
-// a neutral [dependency] heading with structured package/advisory/source detail,
-// so an aggregated finding is not mis-attributed to a single scanner.
-func writeDependencyFinding(w io.Writer, f normalizer.Finding) error {
-	title := f.Title
-	if title == "" {
-		title = f.RuleID
-	}
-	if _, err := fmt.Fprintf(w, "#### [dependency] %s\n", title); err != nil {
+func writeCommentLine(w io.Writer, label, value string) error {
+	_, err := fmt.Fprintf(w, "**%s:** %s\n", label, value)
+	return err
+}
+
+func writeCommentCode(w io.Writer, label, value string) error {
+	return writeCommentLine(w, label, "`"+value+"`")
+}
+
+// writeGenericFinding renders non-dependency findings (secrets, SAST, IaC, CI).
+// Field order: File → Rule → optional extras → description.
+func writeGenericFinding(w io.Writer, f normalizer.Finding) error {
+	if err := writeCommentHeading(w, f.Tool, findingTitle(f)); err != nil {
 		return err
 	}
-	if line := dependencyPackageLine(f); line != "" {
-		if _, err := fmt.Fprintf(w, "**Package:** %s\n", line); err != nil {
+	if loc := findingLocation(f); loc != "" {
+		if err := writeCommentCode(w, "File", loc); err != nil {
 			return err
 		}
 	}
-	if _, err := fmt.Fprintf(w, "**Advisory:** %s\n**Detected by:** %s\n",
-		dependencyAdvisory(f), strings.Join(detectingScanners(f), ", ")); err != nil {
+	if f.RuleID != "" {
+		if err := writeCommentCode(w, "Rule", f.RuleID); err != nil {
+			return err
+		}
+	}
+	if sources := normalizer.InjectionSources(f); len(sources) > 0 {
+		if err := writeCommentLine(w, "Sources", formatBacktickList(sources)); err != nil {
+			return err
+		}
+	}
+	_, err := fmt.Fprintf(w, "%s\n\n", truncateDesc(f.Description))
+	return err
+}
+
+// formatBacktickList joins values as inline code spans for PR comment fields.
+func formatBacktickList(values []string) string {
+	parts := make([]string, len(values))
+	for i, v := range values {
+		parts[i] = "`" + v + "`"
+	}
+	return strings.Join(parts, ", ")
+}
+
+// writeDependencyFinding renders merged SCA findings under a neutral [dependency]
+// heading. Field order: Package → Advisory → Detected by → File/Sources → description.
+func writeDependencyFinding(w io.Writer, f normalizer.Finding) error {
+	if err := writeCommentHeading(w, "dependency", findingTitle(f)); err != nil {
+		return err
+	}
+	if line := dependencyPackageLine(f); line != "" {
+		if err := writeCommentLine(w, "Package", line); err != nil {
+			return err
+		}
+	}
+	if err := writeCommentLine(w, "Advisory", dependencyAdvisory(f)); err != nil {
+		return err
+	}
+	if err := writeCommentLine(w, "Detected by", strings.Join(detectingScanners(f), ", ")); err != nil {
 		return err
 	}
 	if err := writeFindingSources(w, f); err != nil {
@@ -251,8 +300,9 @@ func detectingScanners(f normalizer.Finding) []string {
 	return []string{f.Tool}
 }
 
-// writeFindingSources lists where each scanner saw a merged finding, or the sole
-// location for a single-scanner finding.
+// writeFindingSources lists where each scanner saw a merged finding. Multiple
+// scanners get a bullet list; a single location uses the same File field as
+// non-dependency findings.
 func writeFindingSources(w io.Writer, f normalizer.Finding) error {
 	if len(f.Sources) > 1 {
 		if _, err := fmt.Fprint(w, "**Sources:**\n"); err != nil {
@@ -265,8 +315,10 @@ func writeFindingSources(w io.Writer, f normalizer.Finding) error {
 		}
 		return nil
 	}
-	_, err := fmt.Fprintf(w, "**Source:** `%s` (%s)\n", f.File, f.Tool)
-	return err
+	if loc := findingLocation(f); loc != "" {
+		return writeCommentCode(w, "File", loc)
+	}
+	return nil
 }
 
 func truncateDesc(s string) string {
