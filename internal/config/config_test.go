@@ -141,3 +141,23 @@ func TestSuppressionFields(t *testing.T) {
 		t.Errorf("RuleID = %q", s.RuleID)
 	}
 }
+
+func TestValidate_SuppressionRequiresSelector(t *testing.T) {
+	cfg := Defaults()
+	cfg.Suppressions = []Suppression{
+		{Reason: "no matcher fields"},
+	}
+	if err := validate(cfg); err == nil {
+		t.Fatal("validate expected error for suppression without selectors, got nil")
+	}
+}
+
+func TestValidate_SuppressionToolOnlyAccepted(t *testing.T) {
+	cfg := Defaults()
+	cfg.Suppressions = []Suppression{
+		{Tool: "poutine", Reason: "mute scanner"},
+	}
+	if err := validate(cfg); err != nil {
+		t.Fatalf("validate with tool-only suppression: %v", err)
+	}
+}

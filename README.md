@@ -20,7 +20,7 @@ Add this to any GitHub Actions workflow:
 
 ```yaml
 - name: Muninn Security Scan
-  uses: skaldlab/muninn@v0.3.1
+  uses: skaldlab/muninn@v0.3.2
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
     fail-on: high
@@ -152,8 +152,8 @@ Each key under `scanners` matches a scanner name. All scanners support `enabled`
 |---|---|
 | `id` | Suppress findings whose file path contains this substring |
 | `fingerprint` | Suppress a specific finding by its Muninn fingerprint |
-| `tool` | Scanner name (used with `rule-id`) |
-| `rule-id` | Scanner-native rule identifier (used with `tool`) |
+| `tool` | Scanner name; with `rule-id`, both must match. Alone, suppresses all findings from that scanner |
+| `rule-id` | Scanner-native rule identifier; with `tool`, both must match. Alone, suppresses that rule from any scanner |
 | `reason` | **Required.** Human-readable justification |
 | `expires` | Optional RFC 3339 UTC timestamp; omit for permanent suppressions |
 
@@ -208,7 +208,7 @@ The official image bundles Muninn and all eight scanner binaries:
 docker run --rm \
   -v "$(pwd):/github/workspace" \
   -w /github/workspace \
-  ghcr.io/skaldlab/muninn:0.3.1 \
+  ghcr.io/skaldlab/muninn:0.3.2 \
   --target . \
   --output json,sarif \
   --fail-on high
@@ -219,7 +219,7 @@ docker run --rm \
 Download a release binary from [GitHub Releases](https://github.com/skaldlab/muninn/releases) or install with Go:
 
 ```bash
-go install github.com/skaldlab/muninn@v0.3.1
+go install github.com/skaldlab/muninn@v0.3.2
 ```
 
 Scanner binaries (`gitleaks`, `semgrep`, `checkov`, and the rest) must be on `PATH`. The Docker image includes everything pre-installed.
@@ -234,7 +234,7 @@ Verify the container image:
 cosign verify \
   --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  ghcr.io/skaldlab/muninn:0.3.1
+  ghcr.io/skaldlab/muninn:0.3.2
 ```
 
 Verify release binaries via the signed checksums file (download `checksums.txt` and the Sigstore bundle `checksums.txt.sigstore.json` from the release):
@@ -253,9 +253,9 @@ shasum -a 256 -c checksums.txt
 Inspect the image's SBOM and SLSA provenance attestations (attached by BuildKit):
 
 ```bash
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.3.1 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.3.2 \
   --format '{{ json .SBOM }}'
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.3.1 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.3.2 \
   --format '{{ json .Provenance }}'
 ```
 

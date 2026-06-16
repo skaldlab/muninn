@@ -201,5 +201,17 @@ func validate(cfg *Config) error {
 		return fmt.Errorf("invalid fail-on value %q; must be one of: critical, high, medium, low, info", cfg.FailOn)
 	}
 
+	for i, s := range cfg.Suppressions {
+		if !suppressionHasSelector(s) {
+			return fmt.Errorf("suppression %d: must specify id, fingerprint, tool, and/or rule-id", i+1)
+		}
+	}
+
 	return nil
+}
+
+// suppressionHasSelector reports whether a suppression entry specifies at least
+// one matching criterion.
+func suppressionHasSelector(s Suppression) bool {
+	return s.ID != "" || s.Fingerprint != "" || s.Tool != "" || s.RuleID != ""
 }

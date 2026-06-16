@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.2] - 2026-06-16
+
+### Fixed
+- Suppressions with `tool` and/or `rule-id` are now applied. Previously only `id`
+  (path substring) and `fingerprint` matchers worked; tool+rule-id entries
+  parsed from `muninn.yml` but silently no-op'd.
+
 ## [0.3.1] - 2026-06-16
 
 ### Fixed

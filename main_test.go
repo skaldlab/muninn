@@ -611,6 +611,122 @@ func TestApplySuppressions_DoesNotMutateInput(t *testing.T) {
 	}
 }
 
+func TestApplySuppressions_MatchingToolAndRuleID(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Severity: normalizer.SeverityInfo},
+		{ID: "f2", Tool: "poutine", RuleID: "injection", Severity: normalizer.SeverityMedium},
+	}
+	suppressions := []config.Suppression{
+		{Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Reason: "accepted third-party action"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if !got[0].Suppressed {
+		t.Error("findings[0].Suppressed = false, want true (tool and rule-id matched)")
+	}
+	if got[1].Suppressed {
+		t.Error("findings[1].Suppressed = true, want false (rule-id differed)")
+	}
+}
+
+func TestApplySuppressions_ToolMatchesRuleIDDiffers(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Tool: "poutine", RuleID: "injection", Severity: normalizer.SeverityMedium},
+	}
+	suppressions := []config.Suppression{
+		{Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Reason: "other rule"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if got[0].Suppressed {
+		t.Error("findings[0].Suppressed = true, want false (rule-id did not match)")
+	}
+}
+
+func TestApplySuppressions_RuleIDMatchesToolDiffers(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Tool: "zizmor", RuleID: "github_action_from_unverified_creator_used", Severity: normalizer.SeverityInfo},
+	}
+	suppressions := []config.Suppression{
+		{Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Reason: "poutine only"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if got[0].Suppressed {
+		t.Error("findings[0].Suppressed = true, want false (tool did not match)")
+	}
+}
+
+func TestApplySuppressions_ToolOnly(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Tool: "poutine", RuleID: "injection", Severity: normalizer.SeverityMedium},
+		{ID: "f2", Tool: "gitleaks", RuleID: "generic-api-key", Severity: normalizer.SeverityHigh},
+	}
+	suppressions := []config.Suppression{
+		{Tool: "poutine", Reason: "mute all poutine findings"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if !got[0].Suppressed {
+		t.Error("findings[0].Suppressed = false, want true (tool-only match)")
+	}
+	if got[1].Suppressed {
+		t.Error("findings[1].Suppressed = true, want false (different tool)")
+	}
+}
+
+func TestApplySuppressions_RuleIDOnly(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Tool: "poutine", RuleID: "injection", Severity: normalizer.SeverityMedium},
+		{ID: "f2", Tool: "semgrep", RuleID: "injection", Severity: normalizer.SeverityHigh},
+		{ID: "f3", Tool: "poutine", RuleID: "other", Severity: normalizer.SeverityLow},
+	}
+	suppressions := []config.Suppression{
+		{RuleID: "injection", Reason: "accepted injection pattern in fixtures"},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if !got[0].Suppressed || !got[1].Suppressed {
+		t.Error("expected findings with rule-id injection to be suppressed")
+	}
+	if got[2].Suppressed {
+		t.Error("findings[2].Suppressed = true, want false (rule-id differed)")
+	}
+}
+
+func TestApplySuppressions_ExpiredToolAndRuleID(t *testing.T) {
+	findings := []normalizer.Finding{
+		{ID: "f1", Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Severity: normalizer.SeverityInfo},
+	}
+	past := time.Now().Add(-24 * time.Hour)
+	suppressions := []config.Suppression{
+		{Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Reason: "expired", Expires: past},
+	}
+
+	got := applySuppressions(findings, suppressions)
+
+	if got[0].Suppressed {
+		t.Error("findings[0].Suppressed = true, want false (tool+rule-id suppression expired)")
+	}
+}
+
+func TestShouldFail_ToolRuleSuppressed(t *testing.T) {
+	findings := applySuppressions([]normalizer.Finding{
+		{ID: "f1", Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Severity: normalizer.SeverityInfo, Fingerprint: "fp-1"},
+	}, []config.Suppression{
+		{Tool: "poutine", RuleID: "github_action_from_unverified_creator_used", Reason: "accepted third-party action"},
+	})
+
+	if err := checkFailOn("info", findings); err != nil {
+		t.Fatalf("expected nil for suppressed info finding at fail-on info, got: %v", err)
+	}
+}
+
 // ── shouldFail (checkFailOn) ──────────────────────────────────────────────────
 
 func TestShouldFail_AboveThreshold(t *testing.T) {
