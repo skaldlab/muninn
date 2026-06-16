@@ -18,7 +18,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: '1.26.4'
+          go-version-file: go.mod
           cache: true
 
       - name: Build
@@ -51,7 +51,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: '1.26.4'
+          go-version-file: go.mod
           cache: true
 
       - name: Install scanner binaries
@@ -112,7 +112,7 @@ jobs:
 
       - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6
         with:
-          go-version: '1.26.4'
+          go-version-file: go.mod
           cache: true
 
       - name: Run tests with coverage
