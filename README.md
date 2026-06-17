@@ -106,7 +106,8 @@ scanners:
 
   trivy:
     enabled: true
-    severity: [CRITICAL, HIGH]
+    # Optional: narrow what Trivy reports (default: all levels).
+    # severity: [CRITICAL, HIGH]
     ignore-unfixed: true
 
   checkov:
@@ -143,7 +144,7 @@ Each key under `scanners` matches a scanner name. All scanners support `enabled`
 | Scanner | Additional fields | Description |
 |---|---|---|
 | `semgrep` | `rulesets`, `exclude-paths` | Semgrep rule packs and path prefixes to skip |
-| `trivy` | `severity`, `ignore-unfixed` | Severity filter and whether to omit unfixed CVEs |
+| `trivy` | `severity`, `ignore-unfixed` | Trivy severity filter (default: `UNKNOWN` through `CRITICAL`; omit to scan all levels) and whether to omit unfixed CVEs |
 | `checkov` | `skip-checks` | Checkov check IDs to skip |
 
 ### Suppression fields

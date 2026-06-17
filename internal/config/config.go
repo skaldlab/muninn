@@ -10,6 +10,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// DefaultTrivySeverities is the Muninn default for scanners.trivy.severity.
+// It matches Trivy's native --severity default so osv-scanner and trivy overlap
+// on the same advisories; consumers narrow the scan with an explicit list.
+var DefaultTrivySeverities = []string{"UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
+
 // Config is the top-level structure for muninn.yml.
 type Config struct {
 	// Version must be 1. Reserved for future breaking-change migrations.
@@ -39,7 +44,8 @@ type ScannerConfig struct {
 	// ExcludePaths is a list of path prefixes to skip during scanning.
 	ExcludePaths []string `yaml:"exclude-paths"`
 
-	// Severity is used by trivy to filter by severity level (e.g. ["CRITICAL","HIGH"]).
+	// Severity is used by trivy to filter by severity level. When omitted,
+	// DefaultTrivySeverities applies (all Trivy levels).
 	Severity []string `yaml:"severity"`
 
 	// IgnoreUnfixed tells trivy to omit vulnerabilities that have no fix available.
@@ -177,7 +183,7 @@ func Defaults() *Config {
 			"zizmor":      enabled,
 			"actionlint":  enabled,
 			"poutine":     enabled,
-			"trivy":       {Enabled: true, Severity: []string{"CRITICAL", "HIGH"}, IgnoreUnfixed: true},
+			"trivy":       {Enabled: true, Severity: append([]string(nil), DefaultTrivySeverities...), IgnoreUnfixed: true},
 			"osv-scanner": enabled,
 			"checkov":     enabled,
 		},

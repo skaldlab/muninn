@@ -32,10 +32,16 @@ func TestDefaults(t *testing.T) {
 	if len(cfg.Scanners["semgrep"].Rulesets) == 0 {
 		t.Error("semgrep rulesets should not be empty")
 	}
-	// Trivy ships with severity filter and ignore-unfixed.
+	// Trivy ships with all severity levels and ignore-unfixed by default.
 	trivy := cfg.Scanners["trivy"]
-	if len(trivy.Severity) == 0 {
-		t.Error("trivy severity filter should not be empty")
+	wantSev := []string{"UNKNOWN", "LOW", "MEDIUM", "HIGH", "CRITICAL"}
+	if len(trivy.Severity) != len(wantSev) {
+		t.Fatalf("trivy.Severity = %v, want %v", trivy.Severity, wantSev)
+	}
+	for i, s := range wantSev {
+		if trivy.Severity[i] != s {
+			t.Errorf("trivy.Severity[%d] = %q, want %q", i, trivy.Severity[i], s)
+		}
 	}
 	if !trivy.IgnoreUnfixed {
 		t.Error("trivy IgnoreUnfixed should be true by default")
