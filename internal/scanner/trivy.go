@@ -108,12 +108,12 @@ func (t *Trivy) execute(ctx context.Context, target string) (*trivyOutput, error
 }
 
 // buildArgs constructs the trivy CLI argument list from the configured
-// severity filter and ignore-unfixed flag. Falls back to HIGH,CRITICAL when
-// no severity is configured via Configure.
+// severity filter and ignore-unfixed flag. Falls back to
+// config.DefaultTrivySeverities when no severity is configured via Configure.
 func (t *Trivy) buildArgs(target string) []string {
 	sev := strings.Join(t.severity, ",")
 	if sev == "" {
-		sev = "HIGH,CRITICAL"
+		sev = strings.Join(config.DefaultTrivySeverities, ",")
 	}
 	args := []string{"fs", "--format", "json", "--quiet", "--severity", sev}
 	if t.ignoreUnfixed {

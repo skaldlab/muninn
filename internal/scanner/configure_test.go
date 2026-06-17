@@ -125,6 +125,25 @@ func TestConfigureSemgrep_DefaultRulesetsWhenNoneConfigured(t *testing.T) {
 
 // ── Trivy ─────────────────────────────────────────────────────────────────────
 
+func TestConfigureTrivy_DefaultSeverityAllLevels(t *testing.T) {
+	var capturedArgs []string
+	tv := &Trivy{
+		execFunc: captureExecFunc(t, &capturedArgs, "MUNINN_FAKE_TRIVY", `{"Results":[]}`, 0),
+		lookPath: lookPathTrivy(),
+	}
+
+	tv.Configure(config.ScannerConfig{})
+
+	if _, err := tv.Run(context.Background(), "."); err != nil {
+		t.Fatalf("Run() unexpected error: %v", err)
+	}
+
+	want := "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+	if !containsPair(capturedArgs, "--severity", want) {
+		t.Errorf("args missing --severity %q; got %v", want, capturedArgs)
+	}
+}
+
 func TestConfigureTrivy_Severity(t *testing.T) {
 	var capturedArgs []string
 	tv := &Trivy{
@@ -143,9 +162,12 @@ func TestConfigureTrivy_Severity(t *testing.T) {
 	if !containsPair(capturedArgs, "--severity", "CRITICAL") {
 		t.Errorf("args missing --severity CRITICAL; got %v", capturedArgs)
 	}
-	// HIGH must not appear when it's not in the configured severity list.
+	// HIGH must not appear when only CRITICAL is configured.
 	if containsPair(capturedArgs, "--severity", "HIGH,CRITICAL") {
-		t.Errorf("args should not contain default HIGH,CRITICAL; got %v", capturedArgs)
+		t.Errorf("args should not contain HIGH,CRITICAL when severity is CRITICAL only; got %v", capturedArgs)
+	}
+	if containsPair(capturedArgs, "--severity", "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL") {
+		t.Errorf("args should not contain full default severity when CRITICAL only is configured; got %v", capturedArgs)
 	}
 }
 

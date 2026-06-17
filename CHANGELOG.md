@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.3] - 2026-06-17
+
+### Changed
+- Trivy default severity is now all levels (`UNKNOWN` through `CRITICAL`) instead
+  of `CRITICAL` and `HIGH` only. osv-scanner and trivy now overlap on
+  medium/low advisories by default so cross-scanner dedup and `Detected by`
+  work without extra config. Consumers can narrow the Trivy scan with
+  `scanners.trivy.severity`; `fail-on` still controls which findings fail the run.
+
 ## [0.3.2] - 2026-06-16
 
 ### Fixed

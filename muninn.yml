@@ -19,7 +19,6 @@ scanners:
     enabled: true
   trivy:
     enabled: true
-    severity: [CRITICAL, HIGH]
     ignore-unfixed: true
   checkov:
     enabled: true

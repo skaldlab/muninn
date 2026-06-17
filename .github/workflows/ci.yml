@@ -78,7 +78,7 @@ jobs:
             checkov: { enabled: false }
             poutine: { enabled: false }
             osv-scanner: { enabled: true }
-            trivy: { enabled: true, severity: [CRITICAL, HIGH], ignore-unfixed: true }
+            trivy: { enabled: true, ignore-unfixed: true }
           EOF
           /tmp/muninn --target testdata/fixture-repo --config /tmp/dedup.yml --output json || true
           {
