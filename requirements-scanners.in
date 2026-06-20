@@ -11,3 +11,6 @@ zizmor==1.25.2
 
 # Security floor for checkov's aiohttp dependency: keep it on the patched line.
 aiohttp>=3.14.1
+
+# Transitive via mcp (semgrep); pin for timely security patches.
+pydantic-settings==2.14.2
