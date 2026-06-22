@@ -16,7 +16,7 @@
 # `make scanner-checksums` to regenerate them.
 
 # ── tools: download static Go scanner binaries ───────────────────────────────
-FROM alpine:3.24 AS tools
+FROM alpine:3.24.1 AS tools
 
 RUN apk add --no-cache curl tar
 
