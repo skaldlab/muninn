@@ -77,7 +77,7 @@ version: 1
 
 # Minimum severity to fail the run.
 # Options: critical | high | medium | low | info
-fail-on: critical
+fail-on: info
 
 scanners:
   gitleaks:
@@ -135,7 +135,7 @@ suppressions:
 | Field | Type | Default | Description |
 |---|---|---|---|
 | `version` | `int` | `1` | Config schema version. Must be `1`. |
-| `fail-on` | `string` | `critical` | Minimum severity that causes a non-zero exit code |
+| `fail-on` | `string` | `info` | Minimum severity that causes a non-zero exit code |
 
 ### Scanner fields
 
@@ -163,7 +163,7 @@ Each key under `scanners` matches a scanner name. All scanners support `enabled`
 | Input | Default | Description |
 |---|---|---|
 | `token` | `${{ github.token }}` | GitHub token for PR comments and SARIF upload |
-| `fail-on` | `critical` | Minimum severity to exit non-zero |
+| `fail-on` | `info` | Minimum severity to exit non-zero |
 | `config` | `muninn.yml` | Path to config file relative to repository root |
 | `format` | `sarif,comment` | Comma-separated output formats: `sarif`, `json`, `comment` |
 | `output` | `muninn.sarif` | SARIF output path override |

@@ -21,7 +21,7 @@ type Config struct {
 	Version int `yaml:"version"`
 
 	// FailOn is the minimum severity that causes Muninn to exit non-zero.
-	// Accepted values: critical, high, medium, low.
+	// Accepted values: critical, high, medium, low, info.
 	FailOn string `yaml:"fail-on"`
 
 	// Scanners maps each scanner name to its individual configuration.
@@ -176,7 +176,7 @@ func Defaults() *Config {
 	enabled := ScannerConfig{Enabled: true}
 	return &Config{
 		Version: 1,
-		FailOn:  "critical",
+		FailOn:  "info",
 		Scanners: map[string]ScannerConfig{
 			"gitleaks":    enabled,
 			"semgrep":     {Enabled: true, Rulesets: []string{"p/security-audit", "p/secrets"}},

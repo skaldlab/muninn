@@ -12,9 +12,9 @@ inputs:
     required: true
     default: ${{ github.token }}
   fail-on:
-    description: 'Minimum severity to fail the check (critical/high/medium/low)'
+    description: 'Minimum severity to fail the check (critical/high/medium/low/info)'
     required: false
-    default: 'critical'
+    default: 'info'
   config:
     description: 'Path to muninn.yml config file relative to repository root'
     required: false

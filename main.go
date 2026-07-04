@@ -13,7 +13,7 @@
 //
 //	--config    path to muninn.yml (default: muninn.yml, env: CONFIG_PATH)
 //	--target    path to repository root to scan (default: ., env: SCAN_TARGET)
-//	--fail-on   minimum severity to exit non-zero (default: critical, env: FAIL_ON)
+//	--fail-on   minimum severity to exit non-zero (default: info, env: FAIL_ON)
 //	--output    comma-separated output formats: json,sarif,comment (env: OUTPUT_FORMATS)
 //	--version   print version and exit
 package main

@@ -12,8 +12,8 @@ func TestDefaults(t *testing.T) {
 	if cfg.Version != 1 {
 		t.Errorf("Version = %d, want 1", cfg.Version)
 	}
-	if cfg.FailOn != "critical" {
-		t.Errorf("FailOn = %q, want critical", cfg.FailOn)
+	if cfg.FailOn != "info" {
+		t.Errorf("FailOn = %q, want info", cfg.FailOn)
 	}
 
 	want := []string{"gitleaks", "semgrep", "zizmor", "actionlint", "poutine", "trivy", "osv-scanner", "checkov"}
