@@ -12,5 +12,9 @@ zizmor==1.26.1
 # Security floor for checkov's aiohttp dependency: keep it on the patched line.
 aiohttp>=3.14.1
 
+# Transitive via semgrep/checkov; CVE-2026-7246 needs click>=8.3.3 but semgrep
+# pins click~=8.1.8. requirements-scanners.overrides upgrades click at Docker
+# install time; drop the override once semgrep accepts click>=8.3.3.
+
 # Transitive via mcp (semgrep); pin for timely security patches.
 pydantic-settings==2.14.2
