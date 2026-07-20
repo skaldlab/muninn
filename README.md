@@ -4,7 +4,7 @@
 [![CodeQL](https://github.com/skaldlab/muninn/actions/workflows/codeql.yml/badge.svg)](https://github.com/skaldlab/muninn/actions/workflows/codeql.yml)
 [![Release](https://badgen.net/github/release/skaldlab/muninn)](https://github.com/skaldlab/muninn/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Go Version](https://img.shields.io/badge/Go-1.26.4-blue?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26.5-blue?logo=go)](https://go.dev/)
 
 **Muninn** is an all-in-one open-source security scanner for GitHub Actions pipelines and self-hosted CI, built by [Skald Lab](https://skaldlab.dev).
 
