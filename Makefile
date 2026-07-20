@@ -47,4 +47,5 @@ scanner-checksums-write:
 # Requires uv (https://docs.astral.sh/uv/). Run after editing requirements-scanners.in.
 scanners-lock:
 	uv pip compile --universal --generate-hashes --python-version 3.14 \
+		--override requirements-scanners.overrides \
 		requirements-scanners.in -o requirements-scanners.txt
