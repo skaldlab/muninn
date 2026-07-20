@@ -143,8 +143,9 @@ RUN apt-get update && \
 # Python/Rust scanners installed natively so their compiled parts match the
 # image's glibc.  zizmor ships a Rust binary wheel on PyPI.  Versions and the
 # full transitive dependency tree are hash-locked in requirements-scanners.txt
-# (compiled from requirements-scanners.in via `make scanners-lock`).  uv applies
-# requirements-scanners.overrides at install time for packages semgrep over-constrains.
+# (compiled from requirements-scanners.in via `make scanners-lock`, which also
+# applies requirements-scanners.overrides).  The same overrides are reapplied
+# at install time for packages semgrep over-constrains.
 COPY requirements-scanners.txt requirements-scanners.overrides /tmp/
 RUN pip install --no-cache-dir uv && \
     uv pip install --system --no-cache --require-hashes \

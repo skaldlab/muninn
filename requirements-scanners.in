@@ -14,7 +14,11 @@ aiohttp>=3.14.1
 
 # Transitive via semgrep/checkov; CVE-2026-7246 needs click>=8.3.3 but semgrep
 # pins click~=8.1.8. requirements-scanners.overrides upgrades click at Docker
-# install time; drop the override once semgrep accepts click>=8.3.3.
+# install / lock compile time; drop the override once semgrep accepts click>=8.3.3.
+#
+# Transitive via semgrep; CVE-2026-52870 / CVE-2026-52869 / CVE-2026-59950 need
+# mcp>=1.28.1 but semgrep pins mcp==1.23.3. Same override file upgrades mcp;
+# drop once semgrep accepts a patched mcp.
 
 # Transitive via mcp (semgrep); pin for timely security patches.
 pydantic-settings==2.14.2

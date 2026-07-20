@@ -29,11 +29,3 @@ suppressions:
       Intentional test fixtures (scanner sample output and integration repos).
       All secrets are fake and all vulnerabilities are deliberate.
     expires: ""
-
-  - rule-id: PYSEC-2026-2132
-    reason: >
-      Transitive click 8.1.8 in requirements-scanners.txt is constrained by
-      semgrep pins click~=8.1.8; the Docker image upgrades to click 8.3.3 via
-      requirements-scanners.overrides (CVE-2026-7246). Remove when semgrep
-      accepts click>=8.3.3 and the lockfile can be recompiled without overrides.
-    expires: "2026-10-01T00:00:00Z"
