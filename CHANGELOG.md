@@ -3,6 +3,7 @@
 ## [0.3.6] - 2026-07-22
 
 ### Changed
+
 - Docker image scanner updates: zizmor 1.28.0 (replaces yanked 1.27.0);
   GitPython floor raised to >=3.1.52 for checkov-transitive GHSA highs
   (checkov remains at 3.2.531 pending aiohttp cap lift).
