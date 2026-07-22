@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.6] - 2026-07-22
+
+### Changed
+- Docker image scanner updates: zizmor 1.28.0 (replaces yanked 1.27.0);
+  GitPython floor raised to >=3.1.52 for checkov-transitive GHSA highs
+  (checkov remains at 3.2.531 pending aiohttp cap lift).
+- Go toolchain bumped to 1.26.5.
+
 ## [0.3.5] - 2026-07-20
 
 ### Changed
