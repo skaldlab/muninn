@@ -29,15 +29,19 @@ func readRepoFile(t *testing.T, name string) string {
 	return string(data)
 }
 
+// Version captures are fully numeric dotted forms (e.g. 3.14.1). Pre-release
+// suffixes like rc/alpha/beta are rejected so compareVersions stays well-defined.
+const numericVersionRE = `[0-9]+(?:\.[0-9]+)*`
+
 // exactPinLineRE matches top-level "package==version" pin lines in the .in file.
-var exactPinLineRE = regexp.MustCompile(`(?m)^([A-Za-z0-9_.-]+)==([0-9][A-Za-z0-9.]*)\s*$`)
+var exactPinLineRE = regexp.MustCompile(`(?m)^([A-Za-z0-9_.-]+)==(` + numericVersionRE + `)\s*$`)
 
 // floorPinLineRE matches top-level "package>=version" floor lines in the .in file.
-var floorPinLineRE = regexp.MustCompile(`(?m)^([A-Za-z0-9_.-]+)>=([0-9][A-Za-z0-9.]*)\s*$`)
+var floorPinLineRE = regexp.MustCompile(`(?m)^([A-Za-z0-9_.-]+)>=(` + numericVersionRE + `)\s*$`)
 
 // lockedPinLineRE matches "package==version \" entry header lines emitted by
 // `uv pip compile --generate-hashes` in the .txt lockfile.
-var lockedPinLineRE = regexp.MustCompile(`(?m)^([A-Za-z0-9_.-]+)==([0-9][A-Za-z0-9.]*) \\\s*$`)
+var lockedPinLineRE = regexp.MustCompile(`(?m)^([A-Za-z0-9_.-]+)==(` + numericVersionRE + `) \\\s*$`)
 
 // hashLineRE matches a single --hash=sha256:<64 hex chars> lockfile line, with
 // an optional trailing line-continuation backslash.
@@ -149,6 +153,40 @@ func TestRequirementsScannersIn_GitPythonSecurityFloorAdded(t *testing.T) {
 	}
 }
 
+func TestRequirementsScannersIn_AiohttpSecurityFloor(t *testing.T) {
+	// Direct regression for the aiohttp CVE floor, independent of the generic
+	// floor-vs-lockfile comparison in TestRequirementsScannersLockfile_AllFloorsSatisfied.
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["aiohttp"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no aiohttp>=... security floor")
+	}
+	if got != "3.14.1" {
+		t.Errorf("aiohttp floor = %q, want 3.14.1", got)
+	}
+}
+
+func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
+	cases := []struct {
+		name string
+		re   *regexp.Regexp
+		line string
+		want bool
+	}{
+		{"exact release", exactPinLineRE, "zizmor==1.28.0", true},
+		{"exact rc rejected", exactPinLineRE, "zizmor==1.28.0rc1", false},
+		{"floor release", floorPinLineRE, "aiohttp>=3.14.1", true},
+		{"floor alpha rejected", floorPinLineRE, "aiohttp>=3.14.1a1", false},
+		{"locked release", lockedPinLineRE, "gitpython==3.1.54 \\", true},
+		{"locked beta rejected", lockedPinLineRE, "gitpython==3.1.54beta1 \\", false},
+	}
+	for _, c := range cases {
+		if got := c.re.MatchString(c.line); got != c.want {
+			t.Errorf("%s: MatchString(%q) = %v, want %v", c.name, c.line, got, c.want)
+		}
+	}
+}
 func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
 	idx := strings.Index(in, "gitpython>=3.1.52")
@@ -320,6 +358,14 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 
 	if len(floors) == 0 {
 		t.Fatalf("no floor pins parsed from requirements-scanners.in; regex may be broken")
+	}
+
+	aiohttpFloor, ok := floors["aiohttp"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing aiohttp>=... security floor")
+	}
+	if aiohttpFloor != "3.14.1" {
+		t.Errorf("aiohttp floor = %q, want 3.14.1", aiohttpFloor)
 	}
 
 	for name, floor := range floors {
