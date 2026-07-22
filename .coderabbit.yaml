@@ -27,7 +27,9 @@ reviews:
       - "DO NOT MERGE"
 
   path_filters:
-    - "!**/testdata/**"
+    # Keep testdata/<scanner>/ fixtures in review scope; exclude only the
+    # intentional vuln corpus used by integration scans.
+    - "!**/testdata/fixture-repo/**"
     - "!**/coverage.out"
     - "!**/muninn.json"
     - "!**/muninn.sarif"
