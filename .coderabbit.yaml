@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit complements CodeQL (SAST) and Muninn (multi-scanner CI gate).
+# Prefer review comments over request-changes so humans own merge decisions.
+
+language: "en-US"
+early_access: false
+
+reviews:
+  profile: "chill"
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  review_details: false
+  changed_files_summary: true
+  sequence_diagrams: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+    ignore_title_keywords:
+      - "WIP"
+      - "wip"
+      - "DO NOT MERGE"
+
+  path_filters:
+    - "!**/testdata/**"
+    - "!**/coverage.out"
+    - "!**/muninn.json"
+    - "!**/muninn.sarif"
+    - "!**/*.asc"
+    - "!**/psirt-pocs/**"
+
+  path_instructions:
+    - path: "internal/scanner/**"
+      instructions: |
+        Scanners must implement the `Scanner` interface and return only
+        `[]normalizer.Finding`. Never return raw upstream scanner JSON to callers.
+        Prefer fixture-based tests under `testdata/<scanner>/`; do not exec real
+        scanner binaries or make network calls in unit tests. Wrap errors with
+        `%w`, keep helpers local when single-file, and keep functions under ~40 lines.
+
+    - path: "internal/normalizer/**"
+      instructions: |
+        `Finding` is the canonical schema for the whole product. Flag schema drift,
+        silent field drops during normalization, and severity mapping mistakes.
+        Keep adapters thin: parse upstream output, map to Finding, nothing else.
+
+    - path: "internal/reporter/**"
+      instructions: |
+        Reporters consume `[]normalizer.Finding` only. Suppressions must be applied
+        before reporting. Flag writers that re-parse raw scanner output or bypass
+        the Finding schema.
+
+    - path: "internal/config/**"
+      instructions: |
+        Config changes must stay backward-compatible for existing `muninn.yml`
+        files unless the PR documents a breaking change. Flag vague suppression
+        matching and missing validation/error wrapping.
+
+    - path: "**/*_test.go"
+      instructions: |
+        Prefer table-driven tests with the standard library only. Scanner tests
+        must use `testdata/` fixtures. Flag flaky time/network/exec assumptions
+        and assertions that lock to incidental implementation detail.
+
+    - path: ".github/workflows/**"
+      instructions: |
+        Keep permissions least-privilege, pin Actions by commit SHA with a version
+        comment, and avoid interpolating untrusted PR input into shell. Do not
+        replace CodeQL or Muninn gates with AI review — they are complementary.
+
+    - path: "action.yml"
+      instructions: |
+        GitHub Action inputs/outputs are a public contract. Flag breaking renames
+        without migration notes, and ensure defaults stay safe (fail-closed where
+        security-relevant).
+
+chat:
+  auto_reply: true
