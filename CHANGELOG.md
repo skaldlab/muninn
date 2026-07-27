@@ -1,5 +1,12 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- GitPython floor raised to >=3.1.55 for GHSA-94p4-4cq8-9g67 (incomplete
+  expandvars fix in create_remote / Remote.add).
+
 ## [0.3.6] - 2026-07-22
 
 ### Changed
