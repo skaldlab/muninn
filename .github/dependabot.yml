@@ -29,6 +29,12 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+    # init/analyze/upload-sarif must share one codeql-action SHA; split PRs
+    # fail with "Loaded a configuration file for version X, but running Y".
+    groups:
+      codeql-action:
+        patterns:
+          - "github/codeql-action*"
 
   # Dockerfile base images and pinned tools
   - package-ecosystem: "docker"
