@@ -201,6 +201,29 @@ func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) 
 	}
 }
 
+func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	idx := strings.Index(in, "gitpython>=3.1.55")
+	if idx < 0 {
+		t.Fatalf("gitpython>=3.1.55 floor not found in requirements-scanners.in")
+	}
+	preceding := in[:idx]
+	// The rationale comment accumulates every GHSA advisory that has driven a
+	// gitpython floor bump so far; the new advisory should be appended, not
+	// replace the earlier ones.
+	for _, ghsa := range []string{
+		"GHSA-2f96-g7mh-g2hx",
+		"GHSA-956x-8gvw-wg5v",
+		"GHSA-rwj8-pgh3-r573",
+		"GHSA-v396-v7q4-x2qj",
+		"GHSA-94p4-4cq8-9g67",
+	} {
+		if !strings.Contains(preceding, ghsa) {
+			t.Errorf("gitpython floor rationale comment is missing %s", ghsa)
+		}
+	}
+}
+
 func TestRequirementsScannersIn_GitPythonFloorCompatibleWithCheckovConstraint(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
 	floor, ok := parsePins(floorPinLineRE, in)["gitpython"]
@@ -282,6 +305,22 @@ func TestRequirementsScannersTxt_GitPythonSatisfiesInFloor(t *testing.T) {
 
 	if compareVersions(locked, floor) < 0 {
 		t.Errorf("locked gitpython==%s is below the requirements-scanners.in floor gitpython>=%s", locked, floor)
+	}
+}
+
+func TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion(t *testing.T) {
+	// Direct regression pinning the exact resolved version, independent of
+	// the generic floor-satisfaction check in
+	// TestRequirementsScannersTxt_GitPythonSatisfiesInFloor: a resolver could
+	// technically satisfy the >=3.1.55 floor with a newer release than the
+	// one this PR actually locked.
+	txt := readRepoFile(t, requirementsScannersTxt)
+	got, ok := parsePins(lockedPinLineRE, txt)["gitpython"]
+	if !ok {
+		t.Fatalf("requirements-scanners.txt does not lock gitpython at all")
+	}
+	if got != "3.1.57" {
+		t.Errorf("locked gitpython version = %q, want 3.1.57", got)
 	}
 }
 
