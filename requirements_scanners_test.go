@@ -8,12 +8,12 @@ import (
 	"testing"
 )
 
-// Tests in this file validate the pip-compile lockfile pair for scanner pins
-// and security floors (currently gitpython>=3.1.55 for GHSA-94p4-4cq8-9g67,
-// resolved to gitpython==3.1.57 in the lockfile):
-//
-//   - requirements-scanners.in  (hand-edited top-level pins/floors)
-//   - requirements-scanners.txt (hash-locked output of `make scanners-lock`)
+// These regression tests keep the hand-edited security floors in
+// requirements-scanners.in synchronized with the hash-locked pins that
+// `make scanners-lock` writes to requirements-scanners.txt. Without them a
+// floor bump can land while the lockfile (and Docker image) stay on a
+// vulnerable transitive version — the failure mode that left gitpython on
+// 3.1.54 after GHSA-94p4-4cq8-9g67.
 
 const (
 	requirementsScannersIn  = "requirements-scanners.in"
@@ -187,17 +187,48 @@ func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 		}
 	}
 }
+func TestPrecedingCommentBlock(t *testing.T) {
+	cases := []struct {
+		name string
+		text string
+		want string
+	}{
+		{
+			name: "contiguous block above pin",
+			text: "# keep aiohttp\naiohttp>=3.14.1\n\n# GHSA-94p4-4cq8-9g67\n# more rationale\n",
+			want: "# GHSA-94p4-4cq8-9g67\n# more rationale",
+		},
+		{
+			name: "ignores earlier unrelated comment",
+			text: "# GHSA-94p4-4cq8-9g67 elsewhere\nsemgrep==1.0.0\n\n# only this block\n",
+			want: "# only this block",
+		},
+		{
+			name: "empty when previous line is not a comment",
+			text: "semgrep==1.0.0\n\n",
+			want: "",
+		},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := precedingCommentBlock(c.text); got != c.want {
+				t.Errorf("precedingCommentBlock() = %q, want %q", got, c.want)
+			}
+		})
+	}
+}
+
 func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
 	idx := strings.Index(in, "gitpython>=3.1.55")
 	if idx < 0 {
 		t.Fatalf("gitpython>=3.1.55 floor not found in requirements-scanners.in")
 	}
-	preceding := in[:idx]
-	// Every other security floor in this file documents the GHSA advisories it
-	// fixes; the new gitpython floor should follow the same convention.
-	if !strings.Contains(preceding, "GHSA-94p4-4cq8-9g67") {
-		t.Errorf("gitpython>=3.1.55 floor is missing its GHSA rationale comment")
+	// Only the contiguous comment block immediately above the floor counts;
+	// an unrelated earlier GHSA mention must not satisfy this assertion.
+	block := precedingCommentBlock(in[:idx])
+	if !strings.Contains(block, "GHSA-94p4-4cq8-9g67") {
+		t.Errorf("gitpython>=3.1.55 comment block is missing GHSA-94p4-4cq8-9g67, got: %q", block)
 	}
 }
 
@@ -207,7 +238,7 @@ func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testi
 	if idx < 0 {
 		t.Fatalf("gitpython>=3.1.55 floor not found in requirements-scanners.in")
 	}
-	preceding := in[:idx]
+	block := precedingCommentBlock(in[:idx])
 	// The rationale comment accumulates every GHSA advisory that has driven a
 	// gitpython floor bump so far; the new advisory should be appended, not
 	// replace the earlier ones.
@@ -218,10 +249,38 @@ func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testi
 		"GHSA-v396-v7q4-x2qj",
 		"GHSA-94p4-4cq8-9g67",
 	} {
-		if !strings.Contains(preceding, ghsa) {
-			t.Errorf("gitpython floor rationale comment is missing %s", ghsa)
+		if !strings.Contains(block, ghsa) {
+			t.Errorf("gitpython floor rationale comment is missing %s, got: %q", ghsa, block)
 		}
 	}
+}
+
+// precedingCommentBlock returns the contiguous `# ...` lines at the end of
+// text (typically the slice before a pin/floor line), ignoring a trailing
+// blank line. Returns "" if the preceding non-blank content is not a comment.
+func precedingCommentBlock(text string) string {
+	lines := strings.Split(text, "\n")
+	// Drop the empty string produced by a trailing newline so we inspect the
+	// real last line of content.
+	if len(lines) > 0 && lines[len(lines)-1] == "" {
+		lines = lines[:len(lines)-1]
+	}
+	end := len(lines)
+	for end > 0 && strings.TrimSpace(lines[end-1]) == "" {
+		end--
+	}
+	start := end
+	for start > 0 {
+		trimmed := strings.TrimSpace(lines[start-1])
+		if !strings.HasPrefix(trimmed, "#") {
+			break
+		}
+		start--
+	}
+	if start == end {
+		return ""
+	}
+	return strings.Join(lines[start:end], "\n")
 }
 
 func TestRequirementsScannersIn_GitPythonFloorCompatibleWithCheckovConstraint(t *testing.T) {
@@ -309,18 +368,17 @@ func TestRequirementsScannersTxt_GitPythonSatisfiesInFloor(t *testing.T) {
 }
 
 func TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion(t *testing.T) {
-	// Direct regression pinning the exact resolved version, independent of
-	// the generic floor-satisfaction check in
-	// TestRequirementsScannersTxt_GitPythonSatisfiesInFloor: a resolver could
-	// technically satisfy the >=3.1.55 floor with a newer release than the
-	// one this PR actually locked.
+	// Pin the resolved lockfile version so a future `make scanners-lock` that
+	// silently resolves onto a different line fails CI. Bump this when
+	// intentionally recompiling onto a newer GitPython.
+	const want = "3.1.57"
 	txt := readRepoFile(t, requirementsScannersTxt)
 	got, ok := parsePins(lockedPinLineRE, txt)["gitpython"]
 	if !ok {
 		t.Fatalf("requirements-scanners.txt does not lock gitpython at all")
 	}
-	if got != "3.1.57" {
-		t.Errorf("locked gitpython version = %q, want 3.1.57", got)
+	if got != want {
+		t.Errorf("locked gitpython==%s, want %s", got, want)
 	}
 }
 
