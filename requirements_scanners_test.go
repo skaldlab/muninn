@@ -187,6 +187,9 @@ func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 		}
 	}
 }
+
+// TestPrecedingCommentBlock locks the helper that scopes GHSA rationale checks
+// so an earlier unrelated advisory mention cannot satisfy a floor assertion.
 func TestPrecedingCommentBlock(t *testing.T) {
 	cases := []struct {
 		name string
@@ -218,6 +221,8 @@ func TestPrecedingCommentBlock(t *testing.T) {
 	}
 }
 
+// TestRequirementsScannersIn_GitPythonFloorHasRationaleComment requires the
+// GHSA that motivated the floor to sit in the comment block directly above it.
 func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
 	idx := strings.Index(in, "gitpython>=3.1.55")
@@ -232,6 +237,8 @@ func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) 
 	}
 }
 
+// TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs keeps prior
+// advisories listed when a new GHSA is appended, so history is not silently dropped.
 func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
 	idx := strings.Index(in, "gitpython>=3.1.55")
@@ -367,10 +374,9 @@ func TestRequirementsScannersTxt_GitPythonSatisfiesInFloor(t *testing.T) {
 	}
 }
 
+// TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion pins the
+// resolved lockfile version so an accidental recompile onto another line fails CI.
 func TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion(t *testing.T) {
-	// Pin the resolved lockfile version so a future `make scanners-lock` that
-	// silently resolves onto a different line fails CI. Bump this when
-	// intentionally recompiling onto a newer GitPython.
 	const want = "3.1.57"
 	txt := readRepoFile(t, requirementsScannersTxt)
 	got, ok := parsePins(lockedPinLineRE, txt)["gitpython"]
