@@ -63,8 +63,9 @@ func bulletEntryContaining(section, needle string) (string, bool) {
 		if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
 			return "", false
 		}
-		// Bare (unindented) prose between bullets is not part of an entry.
-		if start < lineIdx && !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
+		// Bare (unindented) prose is not part of an entry — including when the
+		// advisory itself is on that line immediately under a prior bullet.
+		if !strings.HasPrefix(line, " ") && !strings.HasPrefix(line, "\t") {
 			return "", false
 		}
 		start--
@@ -184,6 +185,8 @@ func TestChangelog_ReleasedVersionHeadingsAreWellFormed(t *testing.T) {
 	}
 }
 
+// TestBulletEntryContaining prevents the bullet-scoping helper from accepting
+// adjacent unbulleted advisory prose as part of a preceding list item.
 func TestBulletEntryContaining(t *testing.T) {
 	cases := []struct {
 		name    string
@@ -199,10 +202,18 @@ func TestBulletEntryContaining(t *testing.T) {
 			wantOK: true,
 		},
 		{
-			name: "unbulleted prose after another bullet fails",
+			name: "unbulleted prose after blank line fails",
 			section: `
 - Unrelated change.
 
+GitPython floor raised for GHSA-94p4-4cq8-9g67 without a bullet.
+`,
+			wantOK: false,
+		},
+		{
+			name: "bare advisory line directly after bullet fails",
+			section: `
+- Unrelated change.
 GitPython floor raised for GHSA-94p4-4cq8-9g67 without a bullet.
 `,
 			wantOK: false,
