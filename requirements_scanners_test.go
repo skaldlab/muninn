@@ -8,9 +8,9 @@ import (
 	"testing"
 )
 
-// Tests in this file validate the pip-compile lockfile pair touched by the PR
-// that bumped zizmor 1.27.0 -> 1.28.0 and added a `gitpython>=3.1.52` security
-// floor (resolved to gitpython==3.1.54 in the lockfile):
+// Tests in this file validate the pip-compile lockfile pair for scanner pins
+// and security floors (currently gitpython>=3.1.55 for GHSA-94p4-4cq8-9g67,
+// resolved to gitpython==3.1.57 in the lockfile):
 //
 //   - requirements-scanners.in  (hand-edited top-level pins/floors)
 //   - requirements-scanners.txt (hash-locked output of `make scanners-lock`)
@@ -148,8 +148,8 @@ func TestRequirementsScannersIn_GitPythonSecurityFloorAdded(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no gitpython>=... security floor")
 	}
-	if got != "3.1.52" {
-		t.Errorf("gitpython floor = %q, want 3.1.52", got)
+	if got != "3.1.55" {
+		t.Errorf("gitpython floor = %q, want 3.1.55", got)
 	}
 }
 
@@ -178,8 +178,8 @@ func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 		{"exact rc rejected", exactPinLineRE, "zizmor==1.28.0rc1", false},
 		{"floor release", floorPinLineRE, "aiohttp>=3.14.1", true},
 		{"floor alpha rejected", floorPinLineRE, "aiohttp>=3.14.1a1", false},
-		{"locked release", lockedPinLineRE, "gitpython==3.1.54 \\", true},
-		{"locked beta rejected", lockedPinLineRE, "gitpython==3.1.54beta1 \\", false},
+		{"locked release", lockedPinLineRE, "gitpython==3.1.55 \\", true},
+		{"locked beta rejected", lockedPinLineRE, "gitpython==3.1.55beta1 \\", false},
 	}
 	for _, c := range cases {
 		if got := c.re.MatchString(c.line); got != c.want {
@@ -189,15 +189,15 @@ func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 }
 func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
-	idx := strings.Index(in, "gitpython>=3.1.52")
+	idx := strings.Index(in, "gitpython>=3.1.55")
 	if idx < 0 {
-		t.Fatalf("gitpython>=3.1.52 floor not found in requirements-scanners.in")
+		t.Fatalf("gitpython>=3.1.55 floor not found in requirements-scanners.in")
 	}
 	preceding := in[:idx]
 	// Every other security floor in this file documents the GHSA advisories it
 	// fixes; the new gitpython floor should follow the same convention.
-	if !strings.Contains(preceding, "GHSA-2f96-g7mh-g2hx") {
-		t.Errorf("gitpython>=3.1.52 floor is missing its GHSA rationale comment")
+	if !strings.Contains(preceding, "GHSA-94p4-4cq8-9g67") {
+		t.Errorf("gitpython>=3.1.55 floor is missing its GHSA rationale comment")
 	}
 }
 
@@ -287,8 +287,10 @@ func TestRequirementsScannersTxt_GitPythonSatisfiesInFloor(t *testing.T) {
 
 func TestRequirementsScannersTxt_GitPythonNoLongerOnStaleVulnerableVersion(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
-	if strings.Contains(txt, "gitpython==3.1.50") {
-		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable gitpython==3.1.50 pin")
+	for _, stale := range []string{"gitpython==3.1.50", "gitpython==3.1.54"} {
+		if strings.Contains(txt, stale) {
+			t.Errorf("requirements-scanners.txt still contains the stale, vulnerable %s pin", stale)
+		}
 	}
 }
 
