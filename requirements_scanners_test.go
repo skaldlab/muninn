@@ -129,8 +129,8 @@ func TestRequirementsScannersIn_ZizmorPinnedToPatchedRelease(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no exact zizmor==... pin")
 	}
-	if got != "1.28.0" {
-		t.Errorf("zizmor pin = %q, want 1.28.0", got)
+	if got != "1.29.0" {
+		t.Errorf("zizmor pin = %q, want 1.29.0", got)
 	}
 }
 
@@ -189,8 +189,8 @@ func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 		line string
 		want bool
 	}{
-		{"exact release", exactPinLineRE, "zizmor==1.28.0", true},
-		{"exact rc rejected", exactPinLineRE, "zizmor==1.28.0rc1", false},
+		{"exact release", exactPinLineRE, "zizmor==1.29.0", true},
+		{"exact rc rejected", exactPinLineRE, "zizmor==1.29.0rc1", false},
 		{"floor release", floorPinLineRE, "aiohttp>=3.14.1", true},
 		{"floor alpha rejected", floorPinLineRE, "aiohttp>=3.14.1a1", false},
 		{"locked release", lockedPinLineRE, "gitpython==3.1.55 \\", true},
@@ -348,7 +348,7 @@ func TestRequirementsScannersTxt_ZizmorBlockHasValidHashesAndProvenance(t *testi
 	if !ok {
 		t.Fatalf("requirements-scanners.txt has no zizmor entry")
 	}
-	if !strings.HasPrefix(block, "zizmor==1.28.0") {
+	if !strings.HasPrefix(block, "zizmor==1.29.0") {
 		t.Errorf("zizmor block does not start with the expected pin, got: %q", block)
 	}
 

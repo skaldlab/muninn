@@ -6,6 +6,9 @@
 
 - GitPython floor raised to >=3.1.55 for GHSA-94p4-4cq8-9g67 (incomplete
   expandvars fix in create_remote / Remote.add).
+- Docker image scanner updates: trivy 0.73.0, semgrep 1.172.0, zizmor 1.29.0
+  (checkov remains at 3.2.531 pending aiohttp cap lift; 3.2.533+ also caps
+  `aiohttp<3.14`).
 
 ## [0.3.6] - 2026-07-22
 

@@ -31,7 +31,7 @@ ARG POUTINE_VERSION=1.1.6
 # renovate: datasource=github-releases depName=google/osv-scanner
 ARG OSV_SCANNER_VERSION=2.4.0
 # renovate: datasource=github-releases depName=aquasecurity/trivy
-ARG TRIVY_VERSION=0.72.0
+ARG TRIVY_VERSION=0.73.0
 
 # Target architecture, provided by BuildKit (amd64 | arm64). Declaring the ARG
 # makes the predefined value available; we fall back to uname for plain builds.
@@ -109,8 +109,8 @@ RUN <<'EOF'
 set -eu
 arch="${TARGETARCH:-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')}"
 case "$arch" in
-  amd64) asset="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"; sha="bbb64b9695866ce4a7a8f5c9592002c5961cab378577fa3f8a040df362b9b2ea" ;;
-  arm64) asset="trivy_${TRIVY_VERSION}_Linux-ARM64.tar.gz"; sha="2ca2c023109c2db6b2b77366b6717291452d4531167377d95c79547f0c8e3467" ;;
+  amd64) asset="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"; sha="2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b" ;;
+  arm64) asset="trivy_${TRIVY_VERSION}_Linux-ARM64.tar.gz"; sha="13833d97e8a1a5367471c372a173180157f593bece570e20d5d925fef552f5dd" ;;
   *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 curl -fsSL -o /tmp/trivy.tgz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${asset}"
