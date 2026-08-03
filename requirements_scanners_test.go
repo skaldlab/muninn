@@ -167,6 +167,20 @@ func TestRequirementsScannersIn_AiohttpSecurityFloor(t *testing.T) {
 	}
 }
 
+func TestRequirementsScannersIn_CryptographySecurityFloor(t *testing.T) {
+	// Direct regression for the cryptography CVE floor (GHSA-g6cj-pr64-35w5),
+	// independent of the generic floor-vs-lockfile comparison below.
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["cryptography"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no cryptography>=... security floor")
+	}
+	if got != "50.0.0" {
+		t.Errorf("cryptography floor = %q, want 50.0.0", got)
+	}
+}
+
 func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 	cases := []struct {
 		name string
@@ -471,6 +485,14 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	}
 	if aiohttpFloor != "3.14.3" {
 		t.Errorf("aiohttp floor = %q, want 3.14.3", aiohttpFloor)
+	}
+
+	cryptographyFloor, ok := floors["cryptography"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing cryptography>=... security floor")
+	}
+	if cryptographyFloor != "50.0.0" {
+		t.Errorf("cryptography floor = %q, want 50.0.0", cryptographyFloor)
 	}
 
 	for name, floor := range floors {
