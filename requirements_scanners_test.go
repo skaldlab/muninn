@@ -162,8 +162,8 @@ func TestRequirementsScannersIn_AiohttpSecurityFloor(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no aiohttp>=... security floor")
 	}
-	if got != "3.14.1" {
-		t.Errorf("aiohttp floor = %q, want 3.14.1", got)
+	if got != "3.14.3" {
+		t.Errorf("aiohttp floor = %q, want 3.14.3", got)
 	}
 }
 
@@ -469,8 +469,8 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in missing aiohttp>=... security floor")
 	}
-	if aiohttpFloor != "3.14.1" {
-		t.Errorf("aiohttp floor = %q, want 3.14.1", aiohttpFloor)
+	if aiohttpFloor != "3.14.3" {
+		t.Errorf("aiohttp floor = %q, want 3.14.3", aiohttpFloor)
 	}
 
 	for name, floor := range floors {
