@@ -18,6 +18,10 @@ aiohttp>=3.14.3
 # the patched line.
 gitpython>=3.1.55
 
+# Security floor for checkov's cryptography dependency (GHSA-g6cj-pr64-35w5 /
+# CVE-2026-69247: PKCS#7 EnvelopedData Bleichenbacher oracle). Fixed in 50.0.0.
+cryptography>=50.0.0
+
 # Transitive via semgrep/checkov; CVE-2026-7246 needs click>=8.3.3 but semgrep
 # pins click~=8.1.8. requirements-scanners.overrides upgrades click at Docker
 # install / lock compile time; drop the override once semgrep accepts click>=8.3.3.
