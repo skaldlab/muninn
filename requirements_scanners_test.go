@@ -167,9 +167,10 @@ func TestRequirementsScannersIn_AiohttpSecurityFloor(t *testing.T) {
 	}
 }
 
+// TestRequirementsScannersIn_CryptographySecurityFloor is a regression for the
+// cryptography CVE floor (GHSA-g6cj-pr64-35w5), requiring
+// cryptography>=50.0.0 independent of the generic floor-vs-lockfile comparison.
 func TestRequirementsScannersIn_CryptographySecurityFloor(t *testing.T) {
-	// Direct regression for the cryptography CVE floor (GHSA-g6cj-pr64-35w5),
-	// independent of the generic floor-vs-lockfile comparison below.
 	in := readRepoFile(t, requirementsScannersIn)
 	floors := parsePins(floorPinLineRE, in)
 	got, ok := floors["cryptography"]
