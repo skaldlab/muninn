@@ -43,11 +43,13 @@ func unreleasedSection(t *testing.T, changelog string) string {
 	return rest[:end]
 }
 
-// releasedSection returns the body of the "## [version] - ..." section
-// (exclusive of the heading and the next "## " heading). version is e.g. "0.3.7".
+// releasedSection isolates assertions to a single release version so older
+// changelog entries cannot satisfy tests (e.g. a historical GitPython note).
+// It returns the body of the "## [version] - ..." section exclusive of that
+// heading and of the next "## " heading; version is e.g. "0.3.7". The date is
+// matched flexibly as yyyy-mm-dd rather than hard-coded.
 func releasedSection(t *testing.T, changelog, version string) string {
 	t.Helper()
-	// Match the released heading without requiring a fixed date.
 	re := regexp.MustCompile(`(?m)^## \[` + regexp.QuoteMeta(version) + `\] - \d{4}-\d{2}-\d{2}$`)
 	loc := re.FindStringIndex(changelog)
 	if loc == nil {
