@@ -3,7 +3,7 @@
 [![CI](https://github.com/skaldlab/muninn/actions/workflows/ci.yml/badge.svg)](https://github.com/skaldlab/muninn/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/skaldlab/muninn/actions/workflows/codeql.yml/badge.svg)](https://github.com/skaldlab/muninn/actions/workflows/codeql.yml)
 [![CodeRabbit](https://img.shields.io/badge/CodeRabbit-Reviews-FF570A?labelColor=171717)](https://coderabbit.ai)
-[![Release](https://badgen.net/github/release/skaldlab/muninn)](https://github.com/skaldlab/muninn/releases)
+[![Release](https://img.shields.io/badge/Release-v0.3.7-08C)](https://github.com/skaldlab/muninn/releases/tag/v0.3.7)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Go Version](https://img.shields.io/badge/Go-1.26.5-blue?logo=go)](https://go.dev/)
 
