@@ -16,7 +16,7 @@ aiohttp>=3.14.3
 # GHSA-956x-8gvw-wg5v, GHSA-rwj8-pgh3-r573, GHSA-v396-v7q4-x2qj,
 # GHSA-94p4-4cq8-9g67). checkov allows gitpython<4,>=3.1.30; keep the lock on
 # the patched line.
-gitpython>=3.1.55
+gitpython>=3.1.58
 
 # Security floor for checkov's cryptography dependency (GHSA-g6cj-pr64-35w5 /
 # CVE-2026-69247: PKCS#7 EnvelopedData Bleichenbacher oracle). Fixed in 50.0.0.
