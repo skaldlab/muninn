@@ -159,6 +159,32 @@ func TestChangelog_DocumentsGitPythonFloorBump(t *testing.T) {
 	}
 }
 
+// TestChangelog_DocumentsGitPython358FloorBump ensures the 3.1.58 advisory
+// floor is recorded on the v0.3.8 release notes.
+func TestChangelog_DocumentsGitPython358FloorBump(t *testing.T) {
+	changelog := readChangelog(t)
+	section := releasedSection(t, changelog, "0.3.8")
+
+	for _, want := range []string{"GitPython", "3.1.58", "GHSA-hmq2-w58f-27jc"} {
+		if !strings.Contains(section, want) {
+			t.Errorf("[0.3.8] section is missing %q, got: %q", want, section)
+		}
+	}
+}
+
+// TestChangelog_DocumentsOsvScannerBump ensures osv-scanner 2.5.0 is recorded
+// on the v0.3.8 release notes.
+func TestChangelog_DocumentsOsvScannerBump(t *testing.T) {
+	changelog := readChangelog(t)
+	section := releasedSection(t, changelog, "0.3.8")
+
+	for _, want := range []string{"osv-scanner", "2.5.0"} {
+		if !strings.Contains(section, want) {
+			t.Errorf("[0.3.8] section is missing %q, got: %q", want, section)
+		}
+	}
+}
+
 // TestChangelog_GitPythonFloorEntryIsABulletListItem rejects advisory mentions
 // that only appear in unbulleted prose after another list item in [0.3.7].
 func TestChangelog_GitPythonFloorEntryIsABulletListItem(t *testing.T) {
@@ -171,6 +197,21 @@ func TestChangelog_GitPythonFloorEntryIsABulletListItem(t *testing.T) {
 	}
 	if ok && !strings.Contains(entry, "GHSA-94p4-4cq8-9g67") {
 		t.Errorf("bullet entry missing GHSA-94p4-4cq8-9g67, got: %q", entry)
+	}
+}
+
+// TestChangelog_GitPython358FloorEntryIsABulletListItem rejects advisory
+// mentions that only appear in unbulleted prose in [0.3.8].
+func TestChangelog_GitPython358FloorEntryIsABulletListItem(t *testing.T) {
+	changelog := readChangelog(t)
+	section := releasedSection(t, changelog, "0.3.8")
+
+	entry, ok := bulletEntryContaining(section, "GHSA-hmq2-w58f-27jc")
+	if !ok {
+		t.Errorf("GitPython 3.1.58 floor changelog entry does not appear to be a \"- \" bullet-list item in [0.3.8]")
+	}
+	if ok && !strings.Contains(entry, "GHSA-hmq2-w58f-27jc") {
+		t.Errorf("bullet entry missing GHSA-hmq2-w58f-27jc, got: %q", entry)
 	}
 }
 

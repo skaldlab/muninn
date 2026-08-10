@@ -4,6 +4,12 @@
 
 ### Changed
 
+## [0.3.8] - 2026-08-10
+
+### Changed
+
+- Docker image scanner update: osv-scanner 2.5.0 (full osv-scalibr pipeline;
+  checkov remains at 3.2.531 pending aiohttp cap lift).
 - GitPython floor raised to >=3.1.58 for GHSA-hmq2-w58f-27jc and related
   3.1.58 hardening advisories (path traversal / unguarded git option sinks).
 
