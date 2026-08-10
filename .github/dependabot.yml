@@ -50,3 +50,10 @@ updates:
     labels:
       - "dependencies"
       - "docker"
+    # Stay on stable CPython images. Pre-release tags (e.g. 3.15.0b3-slim) lack
+    # wheels for several scanner deps, so the slim image tries to compile from
+    # source and fails without gcc. Drop once 3.15.0 ships.
+    ignore:
+      - dependency-name: "python"
+        versions:
+          - ">=3.15.0a1,<3.15.0"
