@@ -4,6 +4,9 @@
 
 ### Changed
 
+- GitPython floor raised to >=3.1.58 for GHSA-hmq2-w58f-27jc and related
+  3.1.58 hardening advisories (path traversal / unguarded git option sinks).
+
 ## [0.3.7] - 2026-08-04
 
 ### Changed
