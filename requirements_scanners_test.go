@@ -148,8 +148,8 @@ func TestRequirementsScannersIn_GitPythonSecurityFloorAdded(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no gitpython>=... security floor")
 	}
-	if got != "3.1.55" {
-		t.Errorf("gitpython floor = %q, want 3.1.55", got)
+	if got != "3.1.58" {
+		t.Errorf("gitpython floor = %q, want 3.1.58", got)
 	}
 }
 
@@ -240,15 +240,15 @@ func TestPrecedingCommentBlock(t *testing.T) {
 // GHSA that motivated the floor to sit in the comment block directly above it.
 func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
-	idx := strings.Index(in, "gitpython>=3.1.55")
+	idx := strings.Index(in, "gitpython>=3.1.58")
 	if idx < 0 {
-		t.Fatalf("gitpython>=3.1.55 floor not found in requirements-scanners.in")
+		t.Fatalf("gitpython>=3.1.58 floor not found in requirements-scanners.in")
 	}
 	// Only the contiguous comment block immediately above the floor counts;
 	// an unrelated earlier GHSA mention must not satisfy this assertion.
 	block := precedingCommentBlock(in[:idx])
-	if !strings.Contains(block, "GHSA-94p4-4cq8-9g67") {
-		t.Errorf("gitpython>=3.1.55 comment block is missing GHSA-94p4-4cq8-9g67, got: %q", block)
+	if !strings.Contains(block, "GHSA-hmq2-w58f-27jc") {
+		t.Errorf("gitpython>=3.1.58 comment block is missing GHSA-hmq2-w58f-27jc, got: %q", block)
 	}
 }
 
@@ -256,9 +256,9 @@ func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) 
 // advisories listed when a new GHSA is appended, so history is not silently dropped.
 func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
-	idx := strings.Index(in, "gitpython>=3.1.55")
+	idx := strings.Index(in, "gitpython>=3.1.58")
 	if idx < 0 {
-		t.Fatalf("gitpython>=3.1.55 floor not found in requirements-scanners.in")
+		t.Fatalf("gitpython>=3.1.58 floor not found in requirements-scanners.in")
 	}
 	block := precedingCommentBlock(in[:idx])
 	// The rationale comment accumulates every GHSA advisory that has driven a
@@ -270,6 +270,12 @@ func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testi
 		"GHSA-rwj8-pgh3-r573",
 		"GHSA-v396-v7q4-x2qj",
 		"GHSA-94p4-4cq8-9g67",
+		"GHSA-hmq2-w58f-27jc",
+		"GHSA-4gmw-gg2m-w46p",
+		"GHSA-9rj7-rf2p-w77r",
+		"GHSA-hh9p-6wh2-4mfc",
+		"GHSA-jm78-9fvv-mhgr",
+		"GHSA-wvpp-8hx9-p66j",
 	} {
 		if !strings.Contains(block, ghsa) {
 			t.Errorf("gitpython floor rationale comment is missing %s, got: %q", ghsa, block)
@@ -392,7 +398,7 @@ func TestRequirementsScannersTxt_GitPythonSatisfiesInFloor(t *testing.T) {
 // TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion pins the
 // resolved lockfile version so an accidental recompile onto another line fails CI.
 func TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion(t *testing.T) {
-	const want = "3.1.57"
+	const want = "3.1.58"
 	txt := readRepoFile(t, requirementsScannersTxt)
 	got, ok := parsePins(lockedPinLineRE, txt)["gitpython"]
 	if !ok {
@@ -405,7 +411,7 @@ func TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion(t *testing.T) 
 
 func TestRequirementsScannersTxt_GitPythonNoLongerOnStaleVulnerableVersion(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
-	for _, stale := range []string{"gitpython==3.1.50", "gitpython==3.1.54"} {
+	for _, stale := range []string{"gitpython==3.1.50", "gitpython==3.1.54", "gitpython==3.1.57"} {
 		if strings.Contains(txt, stale) {
 			t.Errorf("requirements-scanners.txt still contains the stale, vulnerable %s pin", stale)
 		}
