@@ -95,11 +95,18 @@ jobs:
           DIGEST: ${{ steps.build.outputs.digest }}
         run: cosign sign --yes "${REGISTRY}/${IMAGE_NAME}@${DIGEST}"
 
-      - name: Create GitHub Release
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" \
-            dist/* \
-            --title "${GITHUB_REF_NAME}" \
-            --notes-file CHANGELOG.md
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/* --clobber
+            gh release edit "${GITHUB_REF_NAME}" \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file CHANGELOG.md
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              dist/* \
+              --title "${GITHUB_REF_NAME}" \
+              --notes-file CHANGELOG.md
+          fi
