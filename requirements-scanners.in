@@ -2,9 +2,10 @@
 # requirements-scanners.txt is the hash-locked, multi-arch output compiled from
 # this file (make scanners-lock). Do not edit the .txt by hand.
 semgrep==1.173.0
-# checkov 3.3.x now allows aiohttp<3.15.0, so we can track the latest checkov
-# while still enforcing the patched aiohttp floor below.
-checkov==3.3.12
+# checkov 3.2.532+ and 3.3.x pull ecdsa>=0.19.0,<1.0.0; current ecdsa releases
+# are affected by PYSEC-2026-1325 / CVE-2024-23342 with no fixed release yet.
+# Keep checkov at 3.2.531 until checkov drops/replaces ecdsa or a fixed ecdsa is available.
+checkov==3.2.531
 zizmor==1.29.0
 
 # Security floor for checkov's aiohttp dependency: keep it on the patched line.
