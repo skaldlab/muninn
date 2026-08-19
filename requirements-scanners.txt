@@ -168,9 +168,9 @@ attrs==26.1.0 \
     #   jsonschema
     #   referencing
     #   semgrep
-bc-detect-secrets==1.5.47 \
-    --hash=sha256:46f88c710b0fd8c5f2e54b361d793b5e1469197884da73cfc6f488b614366fc3 \
-    --hash=sha256:a9be28a2e564f2b19731991df39e63ae6372cc84d828ee24e50c094cbb4c154c
+bc-detect-secrets==1.5.50 \
+    --hash=sha256:016ce9e79f692adbabcbef4a7293db427352911c3f81404a136e6f5c3e54a7f2 \
+    --hash=sha256:99037375d9cb49ed07e5bb12722f4bbb76fb8acaff6f367eef9df7559e7642b3
     # via checkov
 bc-jsonpath-ng==1.6.1 \
     --hash=sha256:2c85bb1d194376808fe1fc49558dd484e39024b15c719995e22de811e6ba4dc8 \
@@ -452,15 +452,14 @@ charset-normalizer==3.4.7 \
     # via
     #   checkov
     #   requests
-checkov==3.2.531 \
-    --hash=sha256:656b035d378f5ca26457c36cf3f9b8d0fe0cc60d3d2f8ad96676d5305946be84 \
-    --hash=sha256:869ce2a4ca2f8eb540f57e95209ca9536c4420d24aa9367dfe24c22ec4dd7328
+checkov==3.3.12 \
+    --hash=sha256:5845b016141a7422734bc127de608e49c8427e83f41709f6192f91d455bf2deb \
+    --hash=sha256:c16f96533ff2caec4caeb9873e5cc23b7612b944f000b018388b121886bb15a6
     # via -r requirements-scanners.in
-click==8.3.3 \
-    --hash=sha256:398329ad4837b2ff7cbe1dd166a4c0f8900c3ca3a218de04466f38f6497f18a2 \
-    --hash=sha256:a2bf429bb3033c89fa4936ffb35d5cb471e3719e1f3c8a7c3fff0b8314305613
+click==8.4.2 \
+    --hash=sha256:9a6cea6e60b17ebe0a44c5cc636d94f09bd66142c1cd7d8b4cd731c4917a15f6 \
+    --hash=sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76
     # via
-    #   --override requirements-scanners.overrides
     #   checkov
     #   click-option-group
     #   cloudsplaining
@@ -567,6 +566,10 @@ dockerfile-parse==2.0.1 \
 dpath==2.1.3 \
     --hash=sha256:d1a7a0e6427d0a4156c792c82caf1f0109603f68ace792e36ca4596fd2cb8d9d \
     --hash=sha256:d9560e03ccd83b3c6f29988b0162ce9b34fd28b9d8dbda46663b20c68d9cdae3
+    # via checkov
+ecdsa==0.19.2 \
+    --hash=sha256:62635b0ac1ca2e027f82122b5b81cb706edc38cd91c63dda28e4f3455a2bf930 \
+    --hash=sha256:840f5dc5e375c68f36c1a7a5b9caad28f95daa65185c9253c0c08dd952bb7399
     # via checkov
 exceptiongroup==1.2.2 \
     --hash=sha256:3111b9d131c238bec2f8f516e123e14ba243563fb135d3fe885990585aa7795b \
@@ -898,12 +901,10 @@ markupsafe==3.0.3 \
     --hash=sha256:f9e130248f4462aaa8e2552d547f36ddadbeaa573879158d721bbd33dfe4743a \
     --hash=sha256:fed51ac40f757d41b7c48425901843666a6677e3e8eb0abcff09e4ba6e664f50
     # via jinja2
-mcp==1.28.1 \
-    --hash=sha256:2726bca5e7193f61c5dde8b12500a6de2d9acf6d1a1c0be9e8c2e706437991df \
-    --hash=sha256:d51e36a5f5644faea4f85ea649bfffa6bc6c26770d42798ad6a3de3d2ba69683
-    # via
-    #   --override requirements-scanners.overrides
-    #   semgrep
+mcp==1.29.0 \
+    --hash=sha256:52d01f334de1868cc3bb2d6604931126a67631f99a6c5d3b82ba47290315ec36 \
+    --hash=sha256:f5a075bb611f23d6f4d080c6a1699fa62772eebc562ba9e66b306ddde1c755f7
+    # via semgrep
 mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
     --hash=sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
@@ -2186,20 +2187,21 @@ semantic-version==2.10.0 \
     # via
     #   semgrep
     #   spdx-tools
-semgrep==1.172.0 \
-    --hash=sha256:09e92c9e6c1635a1549d4e297b2d4a9684dcd351b216ed7f2eb51cfc55479c49 \
-    --hash=sha256:7377cc350c64c7b83de20090cb2843d875da1d806690fd604e446ed544b56d71 \
-    --hash=sha256:7bcac633a0ffb7dfe75b7b99e44876f839590f2c01cd159c44caecc35e591df4 \
-    --hash=sha256:8ba0d661c8cb3a451b27d4300b2d958483d6761262ce84e4dd5ff4f94e700346 \
-    --hash=sha256:c881a305b965e594b88b15c2c6419b398e76e438ec61e60916c8b2effe927240 \
-    --hash=sha256:d8b94af4266a575287ad2cd844573743ab4fe58f6bfb6d9229327807937eade3 \
-    --hash=sha256:e32868faeb67b241bbd3fabd82a12fba4b467464dedde9da285b9bf78e808ba3 \
-    --hash=sha256:f13ddebc870e784b03c9247f095720f49f67244eca1e7da493364f55c65b4493
+semgrep==1.173.0 \
+    --hash=sha256:29a7371b27ed57f464e57c85c2fcfac4352fa67241092405daa21e21f9dea629 \
+    --hash=sha256:95e504f01bf9ae20c23359a76bf9ada3e10c88906de58964f489e6332753260a \
+    --hash=sha256:a4f690a9a3f0ad11a862844e9e7c1efd75ed72293eb488e7ea438111b138b5f9 \
+    --hash=sha256:c62eb7c13257c3cc58106b8f6afab152f9f99bfe36fdfebd6f09809fa1c50966 \
+    --hash=sha256:cb21aa06246bdd79d3e9e7f9118ec7baecb1be39cf89c46e07af13b4128d7b79 \
+    --hash=sha256:d81c6166ce595e223ea908e5fe36044a5cbb1b5a2821e28dc1e34f3964fa7ed1 \
+    --hash=sha256:e1a508dd8bccaff05482bb2968d4ae84a432f932e502d3caccdb3d525da51f22 \
+    --hash=sha256:f9a71d2e692ebf96fdf1640eed0291faa947642c8d5b98478b60ea815ca8bc67
     # via -r requirements-scanners.in
 six==1.17.0 \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
     --hash=sha256:ff70335d468e7eb6ec65b95b99d3a2836546063f63acc5171de367e834932a81
     # via
+    #   ecdsa
     #   junit-xml
     #   python-dateutil
 smmap==5.0.3 \

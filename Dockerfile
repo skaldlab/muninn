@@ -29,9 +29,9 @@ ARG ACTIONLINT_VERSION=1.7.12
 # renovate: datasource=github-releases depName=boostsecurityio/poutine
 ARG POUTINE_VERSION=1.1.6
 # renovate: datasource=github-releases depName=google/osv-scanner
-ARG OSV_SCANNER_VERSION=2.5.0
+ARG OSV_SCANNER_VERSION=2.5.1
 # renovate: datasource=github-releases depName=aquasecurity/trivy
-ARG TRIVY_VERSION=0.73.0
+ARG TRIVY_VERSION=0.74.0
 
 # Target architecture, provided by BuildKit (amd64 | arm64). Declaring the ARG
 # makes the predefined value available; we fall back to uname for plain builds.
@@ -94,8 +94,8 @@ RUN <<'EOF'
 set -eu
 arch="${TARGETARCH:-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')}"
 case "$arch" in
-  amd64) asset="osv-scanner_linux_amd64"; sha="edcfc41d257db36148f065055655fe3fcfc434b0b423ea67468a84c207524e0c" ;;
-  arm64) asset="osv-scanner_linux_arm64"; sha="fe152e1a546af223e6c557cc3111a8bb3e5dc02fcbf7dbe95d26567c0f0041f2" ;;
+  amd64) asset="osv-scanner_linux_amd64"; sha="f9f25499a2c8cc367b3af45df2ea7eeca7fbccceab9c35079968f4b3652194be" ;;
+  arm64) asset="osv-scanner_linux_arm64"; sha="3d0f5aa5a6baa8eb32bcef247388e149ef6030a6634ccae6fa0d62681fb27a6d" ;;
   *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 curl -fsSL -o /usr/local/bin/osv-scanner "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/${asset}"
@@ -109,8 +109,8 @@ RUN <<'EOF'
 set -eu
 arch="${TARGETARCH:-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')}"
 case "$arch" in
-  amd64) asset="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"; sha="2edd39da482bb4e9831962487b68f68e3928ec3137794757f54d00383d79547b" ;;
-  arm64) asset="trivy_${TRIVY_VERSION}_Linux-ARM64.tar.gz"; sha="13833d97e8a1a5367471c372a173180157f593bece570e20d5d925fef552f5dd" ;;
+  amd64) asset="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"; sha="2ae6fe3ee734b7fdf11335663e18c75ea12dccc76062f09f164a3b0f8be4371a" ;;
+  arm64) asset="trivy_${TRIVY_VERSION}_Linux-ARM64.tar.gz"; sha="b94ce1976bbf3c15b514b605ee88be7c6d94a29be2302847ff01cb794d47aad5" ;;
   *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 curl -fsSL -o /tmp/trivy.tgz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/${asset}"
