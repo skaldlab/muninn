@@ -1,7 +1,7 @@
 # Top-level pins for the pip-installed scanners. Renovate keeps these current;
 # requirements-scanners.txt is the hash-locked, multi-arch output compiled from
 # this file (make scanners-lock). Do not edit the .txt by hand.
-semgrep==1.173.0
+semgrep==1.174.0
 # checkov 3.2.532+ and 3.3.x pull ecdsa>=0.19.0,<1.0.0; current ecdsa releases
 # are affected by PYSEC-2026-1325 / CVE-2024-23342 with no fixed release yet.
 # Keep checkov at 3.2.531 until checkov drops/replaces ecdsa or a fixed ecdsa is available.
@@ -32,4 +32,4 @@ cryptography>=50.0.0
 asteval>=1.0.10
 
 # Transitive via mcp (semgrep); pin for timely security patches.
-pydantic-settings==2.14.2
+pydantic-settings==2.15.0

@@ -219,22 +219,22 @@ func TestChangelog_GitPython358FloorEntryIsABulletListItem(t *testing.T) {
 // superseded 3.1.52 floor from lingering in pending notes after the bump.
 func TestChangelog_DocumentsAstevalFloorBump(t *testing.T) {
 	changelog := readChangelog(t)
-	section := unreleasedSection(t, changelog)
+	section := releasedSection(t, changelog, "0.3.10")
 
 	for _, want := range []string{"asteval", "1.0.10", "GHSA-89v8-rhwq-hf77", "GHSA-9w56-46f6-3qhx"} {
 		if !strings.Contains(section, want) {
-			t.Errorf("[Unreleased] section is missing %q, got: %q", want, section)
+			t.Errorf("[0.3.10] section is missing %q, got: %q", want, section)
 		}
 	}
 }
 
 func TestChangelog_AstevalFloorEntryIsABulletListItem(t *testing.T) {
 	changelog := readChangelog(t)
-	section := unreleasedSection(t, changelog)
+	section := releasedSection(t, changelog, "0.3.10")
 
 	entry, ok := bulletEntryContaining(section, "GHSA-89v8-rhwq-hf77")
 	if !ok {
-		t.Errorf("asteval floor changelog entry does not appear to be a \"- \" bullet-list item in [Unreleased]")
+		t.Errorf("asteval floor changelog entry does not appear to be a \"- \" bullet-list item in [0.3.10]")
 	}
 	if ok && !strings.Contains(entry, "GHSA-9w56-46f6-3qhx") {
 		t.Errorf("bullet entry missing GHSA-9w56-46f6-3qhx, got: %q", entry)
