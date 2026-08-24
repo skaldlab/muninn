@@ -121,7 +121,7 @@ rm /tmp/trivy.tgz
 EOF
 
 # ── builder: compile Muninn (static, runs on any libc) ───────────────────────
-FROM golang:1.26.5-alpine AS builder
+FROM golang:1.26.6-alpine AS builder
 ARG VERSION=dev
 WORKDIR /src
 COPY go.mod ./

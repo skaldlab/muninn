@@ -10,11 +10,15 @@
   transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed ecdsa release yet.
 - The secure `aiohttp>=3.14.3` floor remains enforced.
+- asteval floor raised to >=1.0.10 (hashed override) for GHSA-89v8-rhwq-hf77
+  (CVE-2026-55244) and GHSA-9w56-46f6-3qhx; checkov 3.2.531 still requires
+  asteval 1.0.6.
 - Removed obsolete semgrep dependency overrides (`click`, `mcp`) after semgrep
   upstream constraint updates; lockfile now resolves to `click 8.4.2` and
   `mcp 1.29.0` without override pins.
 - Post-release follow-up: update all user-facing latest-version references
   (website pages, README snippets, and docs examples) to the released tag.
+- Go toolchain bumped to 1.26.6 (matches `golang:1.26.6-alpine` builder).
 
 ## [0.3.8] - 2026-08-10
 
