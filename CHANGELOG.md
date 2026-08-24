@@ -18,6 +18,7 @@
   `mcp 1.29.0` without override pins.
 - Post-release follow-up: update all user-facing latest-version references
   (website pages, README snippets, and docs examples) to the released tag.
+- Go toolchain bumped to 1.26.6 (matches `golang:1.26.6-alpine` builder).
 
 ## [0.3.8] - 2026-08-10
 
