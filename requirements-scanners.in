@@ -23,5 +23,13 @@ gitpython>=3.1.58
 # CVE-2026-69247: PKCS#7 EnvelopedData Bleichenbacher oracle). Fixed in 50.0.0.
 cryptography>=50.0.0
 
+# Security floor for checkov's asteval dependency (GHSA-89v8-rhwq-hf77 /
+# CVE-2026-55244 sandbox escape via BaseException subclasses, and
+# GHSA-9w56-46f6-3qhx arbitrary memory R/W via numpy ctypes). Fixed in 1.0.9.
+# checkov 3.2.531 requires asteval 1.0.6 exactly, so
+# requirements-scanners.overrides forces 1.0.10; this floor keeps the lock
+# from drifting back.
+asteval>=1.0.10
+
 # Transitive via mcp (semgrep); pin for timely security patches.
 pydantic-settings==2.14.2

@@ -5,7 +5,7 @@
 [![CodeRabbit](https://img.shields.io/badge/CodeRabbit-Reviews-FF570A?labelColor=171717)](https://coderabbit.ai)
 [![Release](https://badgen.net/github/release/skaldlab/muninn)](https://github.com/skaldlab/muninn/releases)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Go Version](https://img.shields.io/badge/Go-1.26.5-blue?logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.26.6-blue?logo=go)](https://go.dev/)
 
 **Muninn** is an all-in-one open-source security scanner for GitHub Actions pipelines and self-hosted CI, built by [Skald Lab](https://skaldlab.dev).
 
