@@ -170,6 +170,46 @@ func TestRequirementsScannersIn_AiohttpSecurityFloor(t *testing.T) {
 // TestRequirementsScannersIn_CryptographySecurityFloor is a regression for the
 // cryptography CVE floor (GHSA-g6cj-pr64-35w5), requiring
 // cryptography>=50.0.0 independent of the generic floor-vs-lockfile comparison.
+func TestRequirementsScannersOverrides_AstevalForcedToPatchedRelease(t *testing.T) {
+	data, err := os.ReadFile("requirements-scanners.overrides")
+	if err != nil {
+		t.Fatalf("read requirements-scanners.overrides: %v", err)
+	}
+	overrides := string(data)
+	if !strings.Contains(overrides, "asteval==1.0.10") {
+		t.Errorf("requirements-scanners.overrides must force asteval==1.0.10 because checkov==3.2.531 pins 1.0.6, got: %q", overrides)
+	}
+	if !strings.Contains(overrides, "GHSA-89v8-rhwq-hf77") || !strings.Contains(overrides, "GHSA-9w56-46f6-3qhx") {
+		t.Errorf("asteval override is missing GHSA rationale, got: %q", overrides)
+	}
+}
+
+func TestRequirementsScannersIn_AstevalSecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["asteval"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no asteval>=... security floor")
+	}
+	if got != "1.0.10" {
+		t.Errorf("asteval floor = %q, want 1.0.10", got)
+	}
+}
+
+func TestRequirementsScannersIn_AstevalFloorHasRationaleComment(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	idx := strings.Index(in, "asteval>=1.0.10")
+	if idx < 0 {
+		t.Fatalf("asteval>=1.0.10 floor not found in requirements-scanners.in")
+	}
+	block := precedingCommentBlock(in[:idx])
+	for _, ghsa := range []string{"GHSA-89v8-rhwq-hf77", "GHSA-9w56-46f6-3qhx"} {
+		if !strings.Contains(block, ghsa) {
+			t.Errorf("asteval>=1.0.10 comment block is missing %s, got: %q", ghsa, block)
+		}
+	}
+}
+
 func TestRequirementsScannersIn_CryptographySecurityFloor(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
 	floors := parsePins(floorPinLineRE, in)
@@ -418,6 +458,44 @@ func TestRequirementsScannersTxt_GitPythonNoLongerOnStaleVulnerableVersion(t *te
 	}
 }
 
+func TestRequirementsScannersTxt_AstevalNoLongerOnStaleVulnerableVersion(t *testing.T) {
+	txt := readRepoFile(t, requirementsScannersTxt)
+	if strings.Contains(txt, "asteval==1.0.6") {
+		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable asteval==1.0.6 pin")
+	}
+}
+
+func TestRequirementsScannersTxt_AstevalBlockRecordsDirectAndTransitiveProvenance(t *testing.T) {
+	txt := readRepoFile(t, requirementsScannersTxt)
+	block, ok := packageBlock(txt, "asteval")
+	if !ok {
+		t.Fatalf("requirements-scanners.txt has no asteval entry")
+	}
+	if !strings.HasPrefix(block, "asteval==1.0.10") {
+		t.Errorf("asteval block does not start with the expected pin, got: %q", block)
+	}
+
+	var hashCount int
+	for _, line := range strings.Split(block, "\n") {
+		if strings.Contains(line, "--hash=sha256:") {
+			if !hashLineRE.MatchString(line) {
+				t.Errorf("malformed hash line in asteval block: %q", line)
+			}
+			hashCount++
+		}
+	}
+	if hashCount == 0 {
+		t.Errorf("asteval block has no --hash=sha256:... entries")
+	}
+
+	if !strings.Contains(block, "-r requirements-scanners.in") {
+		t.Errorf("asteval block is missing '-r requirements-scanners.in' provenance, got: %q", block)
+	}
+	if !strings.Contains(block, "checkov") {
+		t.Errorf("asteval block is missing 'checkov' provenance, got: %q", block)
+	}
+}
+
 func TestRequirementsScannersTxt_GitPythonBlockRecordsDirectAndTransitiveProvenance(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
 	block, ok := packageBlock(txt, "gitpython")
@@ -500,6 +578,14 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	}
 	if cryptographyFloor != "50.0.0" {
 		t.Errorf("cryptography floor = %q, want 50.0.0", cryptographyFloor)
+	}
+
+	astevalFloor, ok := floors["asteval"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing asteval>=... security floor")
+	}
+	if astevalFloor != "1.0.10" {
+		t.Errorf("asteval floor = %q, want 1.0.10", astevalFloor)
 	}
 
 	for name, floor := range floors {

@@ -155,10 +155,13 @@ argcomplete==3.6.3 \
     --hash=sha256:62e8ed4fd6a45864acc8235409461b72c9a28ee785a2011cc5eb78318786c89c \
     --hash=sha256:f5007b3a600ccac5d25bbce33089211dfd49eab4a7718da3f10e3082525a92ce
     # via checkov
-asteval==1.0.6 \
-    --hash=sha256:1aa8e7304b2e171a90d64dd269b648cacac4e46fe5de54ac0db24776c0c4a19f \
-    --hash=sha256:5e119ed306e39199fd99c881cea0e306b3f3807f050c9be79829fe274c6378dc
-    # via checkov
+asteval==1.0.10 \
+    --hash=sha256:46a4ed13cc2e4a29a21418f89dedd57db70d98eb96db0fb4c441d4edb2f5afed \
+    --hash=sha256:8d805fa8084aa12204715f799430f0012a0db38b42e997f9f11a9637ad59855f
+    # via
+    #   --override requirements-scanners.overrides
+    #   -r requirements-scanners.in
+    #   checkov
 attrs==26.1.0 \
     --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309 \
     --hash=sha256:d03ceb89cb322a8fd706d4fb91940737b6642aa36998fe130a9bc96c985eff32
