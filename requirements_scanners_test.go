@@ -177,7 +177,10 @@ func TestRequirementsScannersOverrides_AstevalForcedToPatchedRelease(t *testing.
 	}
 	overrides := string(data)
 	if !strings.Contains(overrides, "asteval==1.0.10") {
-		t.Errorf("requirements-scanners.overrides must force asteval==1.0.10 because checkov==3.2.531 pins 1.0.6, got: %q", overrides)
+		t.Errorf("requirements-scanners.overrides must force asteval==1.0.10 because checkov 3.2.531 pins 1.0.6, got: %q", overrides)
+	}
+	if !strings.Contains(overrides, "--hash=sha256:") {
+		t.Errorf("asteval override must include --hash=sha256 so Docker --require-hashes install succeeds, got: %q", overrides)
 	}
 	if !strings.Contains(overrides, "GHSA-89v8-rhwq-hf77") || !strings.Contains(overrides, "GHSA-9w56-46f6-3qhx") {
 		t.Errorf("asteval override is missing GHSA rationale, got: %q", overrides)

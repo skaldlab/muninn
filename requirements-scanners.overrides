@@ -1,7 +1,10 @@
 # Install-/compile-time overrides for scanner dependencies.
 # Applied by `make scanners-lock` and the Docker image `uv pip install`.
 #
-# checkov==3.2.531 pins asteval==1.0.6 exactly. That release is affected by
+# checkov 3.2.531 requires asteval 1.0.6 exactly. That release is affected by
 # GHSA-89v8-rhwq-hf77 (CVE-2026-55244) and GHSA-9w56-46f6-3qhx. Force the
-# patched line until checkov loosens or drops the pin.
-asteval==1.0.10
+# patched line until checkov loosens or drops the pin. Hashes are required
+# because image install uses uv pip install --require-hashes.
+asteval==1.0.10 \
+    --hash=sha256:46a4ed13cc2e4a29a21418f89dedd57db70d98eb96db0fb4c441d4edb2f5afed \
+    --hash=sha256:8d805fa8084aa12204715f799430f0012a0db38b42e997f9f11a9637ad59855f
