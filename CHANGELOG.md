@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Go toolchain bumped to 1.27.0 (matches `golang:1.27.0-alpine` builder).
 - checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x` reintroduce
   transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
