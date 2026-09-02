@@ -20,6 +20,7 @@ const (
 	requirementsScannersTxt = "requirements-scanners.txt"
 )
 
+// readRepoFile loads a workspace file for scanner lockfile regression tests.
 func readRepoFile(t *testing.T, name string) string {
 	t.Helper()
 	data, err := os.ReadFile(name)
@@ -122,6 +123,8 @@ func TestCompareVersions(t *testing.T) {
 
 // ── requirements-scanners.in ────────────────────────────────────────────────
 
+// TestRequirementsScannersIn_ZizmorPinnedToPatchedRelease locks the direct
+// zizmor pin to a non-yanked release line in requirements-scanners.in.
 func TestRequirementsScannersIn_ZizmorPinnedToPatchedRelease(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
 	pins := parsePins(exactPinLineRE, in)
@@ -225,6 +228,8 @@ func TestRequirementsScannersIn_CryptographySecurityFloor(t *testing.T) {
 	}
 }
 
+// TestPinVersionRegexRejectsPrereleaseSuffixes keeps pin/floor regexes on
+// numeric dotted versions so compareVersions and lockfile parsing stay stable.
 func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 	cases := []struct {
 		name string
@@ -391,6 +396,8 @@ func TestRequirementsScannersTxt_ZizmorMatchesInPinExactly(t *testing.T) {
 	}
 }
 
+// TestRequirementsScannersTxt_ZizmorBlockHasValidHashesAndProvenance verifies
+// the lockfile zizmor entry matches the .in pin and includes hashes plus provenance.
 func TestRequirementsScannersTxt_ZizmorBlockHasValidHashesAndProvenance(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
 	block, ok := packageBlock(txt, "zizmor")
