@@ -10,6 +10,13 @@
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
 - The secure `aiohttp>=3.14.3` floor remains enforced.
 
+## [0.3.11] - 2026-09-02
+
+### Changed
+
+- Docker image scanner updates: semgrep `1.176.0`, zizmor `1.30.0` (checkov
+  remains at `3.2.531` pending a fixed ecdsa or checkov constraint change).
+
 ## [0.3.10] - 2026-08-24
 
 ### Changed
