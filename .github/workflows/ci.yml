@@ -158,7 +158,7 @@ jobs:
 
       - name: Run Muninn
         id: muninn
-        uses: $/
+        uses: ./
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           fail-on: info
