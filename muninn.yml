@@ -31,7 +31,7 @@ suppressions:
     expires: ""
 
   - tool: zizmor
-    rule-id: self-repository
+    rule-id: zizmor/self-repository
     reason: >
       action.yml lives at repository root; bare $/ has no subpath and is rejected
       by GitHub Actions and actionlint 1.7.12. Workspace-relative ./ with
