@@ -4,14 +4,22 @@
 
 ### Changed
 
-- GitPython floor raised to >=3.1.59 for GHSA-7833-fr7j-v32q,
-  GHSA-284h-m62q-gf8w, GHSA-8mcc-hrx5-hvxc, and GHSA-5xxx-qhh7-9287
-  (PYSEC-2026-3785 through PYSEC-2026-3788); lockfile resolves to 3.1.62.
-- Go toolchain bumped to 1.27.1 (matches `golang:1.27.1-alpine` builder).
 - checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x` reintroduce
   transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
 - The secure `aiohttp>=3.14.3` floor remains enforced.
+
+## [0.3.12] - 2026-09-07
+
+### Changed
+
+- Docker image scanner update: semgrep `1.176.1` (checkov remains at
+  `3.2.531` pending a fixed ecdsa or checkov constraint change).
+- cryptography floor raised to >=50.0.1; lockfile resolves to 50.0.1.
+- GitPython floor raised to >=3.1.59 for GHSA-7833-fr7j-v32q,
+  GHSA-284h-m62q-gf8w, GHSA-8mcc-hrx5-hvxc, and GHSA-5xxx-qhh7-9287
+  (PYSEC-2026-3785 through PYSEC-2026-3788); lockfile resolves to 3.1.62.
+- Go toolchain bumped to 1.27.1 (matches `golang:1.27.1-alpine` builder).
 
 ## [0.3.11] - 2026-09-02
 

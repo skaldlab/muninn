@@ -223,8 +223,8 @@ func TestRequirementsScannersIn_CryptographySecurityFloor(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no cryptography>=... security floor")
 	}
-	if got != "50.0.0" {
-		t.Errorf("cryptography floor = %q, want 50.0.0", got)
+	if got != "50.0.1" {
+		t.Errorf("cryptography floor = %q, want 50.0.1", got)
 	}
 }
 
@@ -590,8 +590,8 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in missing cryptography>=... security floor")
 	}
-	if cryptographyFloor != "50.0.0" {
-		t.Errorf("cryptography floor = %q, want 50.0.0", cryptographyFloor)
+	if cryptographyFloor != "50.0.1" {
+		t.Errorf("cryptography floor = %q, want 50.0.1", cryptographyFloor)
 	}
 
 	astevalFloor, ok := floors["asteval"]
