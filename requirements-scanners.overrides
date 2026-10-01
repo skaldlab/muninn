@@ -8,3 +8,10 @@
 asteval==1.0.10 \
     --hash=sha256:46a4ed13cc2e4a29a21418f89dedd57db70d98eb96db0fb4c441d4edb2f5afed \
     --hash=sha256:8d805fa8084aa12204715f799430f0012a0db38b42e997f9f11a9637ad59855f
+
+# semgrep 1.176.1–1.178.0 require pyjwt[crypto]~=2.13.0, which is affected by
+# GHSA-ffc3-869f-jxw9 and related JWT advisories fixed in 2.14/2.15. Force the
+# patched line until semgrep loosens its pyjwt pin.
+pyjwt==2.15.1 \
+    --hash=sha256:42d59d631f7768a1028a64c7ff581a9bf7519804daf91fc5b6c56e30eec5e193 \
+    --hash=sha256:4f259e80cdfb6b3fc18a7de51fd1ef9ec79652f25019bae68975ca2468a34df8
