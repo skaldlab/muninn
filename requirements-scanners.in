@@ -45,3 +45,18 @@ anyio>=4.14.2
 # GHSA-gjv8-xp57-g29c (CVE-2026-86000) and GHSA-j934-xhv5-fg8f (CVE-2026-85999)
 # CSS-selector ReDoS. Fixed in 2.9.0.
 soupsieve>=2.9.0
+
+# Security floor for checkov/semgrep PyJWT transitive: algorithm-confusion /
+# JWKS / DoS advisories fixed across 2.14.0–2.15.0 (GHSA-ffc3-869f-jxw9,
+# GHSA-9j54-fg26-wv3r, GHSA-9v7f-9g4p-ffgj, GHSA-p4g4-x82p-q773,
+# GHSA-r6x4-923q-g947, GHSA-w2cx-738m-mc7w, GHSA-2gx3-rcp4-g85q,
+# GHSA-42vr-xj54-vc7v, GHSA-8wjv-2p76-3863, GHSA-gvp8-978c-rx2q,
+# GHSA-hxm8-2xgr-2p9m, GHSA-jwrc-g2q2-pq5p, GHSA-w6j9-cwv2-h6wq).
+# semgrep still requires pyjwt~=2.13.0, so requirements-scanners.overrides
+# forces 2.15.1; this floor keeps the lock from drifting back.
+pyjwt>=2.15.0
+
+# Security floor for urllib3 (shared scanner transitive): GHSA-8988-9cw3-xx77,
+# GHSA-vxq7-64xx-v4gw, GHSA-gh4c-6fx4-qh6g (CVE-2026-97687 / 97689 / 97688).
+# Fixed in 2.8.0.
+urllib3>=2.8.0

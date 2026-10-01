@@ -252,6 +252,47 @@ func TestRequirementsScannersIn_SoupsieveSecurityFloor(t *testing.T) {
 	}
 }
 
+func TestRequirementsScannersOverrides_PyJWTForcedToPatchedRelease(t *testing.T) {
+	data, err := os.ReadFile("requirements-scanners.overrides")
+	if err != nil {
+		t.Fatalf("read requirements-scanners.overrides: %v", err)
+	}
+	overrides := string(data)
+	if !strings.Contains(overrides, "pyjwt==2.15.1") {
+		t.Errorf("requirements-scanners.overrides must force pyjwt==2.15.1 because semgrep pins ~=2.13.0, got: %q", overrides)
+	}
+	if !strings.Contains(overrides, "--hash=sha256:") {
+		t.Errorf("pyjwt override must include --hash=sha256 so Docker --require-hashes install succeeds, got: %q", overrides)
+	}
+	if !strings.Contains(overrides, "GHSA-ffc3-869f-jxw9") {
+		t.Errorf("pyjwt override is missing GHSA-ffc3-869f-jxw9 rationale, got: %q", overrides)
+	}
+}
+
+func TestRequirementsScannersIn_PyJWTSecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["pyjwt"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no pyjwt>=... security floor")
+	}
+	if got != "2.15.0" {
+		t.Errorf("pyjwt floor = %q, want 2.15.0", got)
+	}
+}
+
+func TestRequirementsScannersIn_Urllib3SecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["urllib3"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no urllib3>=... security floor")
+	}
+	if got != "2.8.0" {
+		t.Errorf("urllib3 floor = %q, want 2.8.0", got)
+	}
+}
+
 // TestPinVersionRegexRejectsPrereleaseSuffixes keeps pin/floor regexes on
 // numeric dotted versions so compareVersions and lockfile parsing stay stable.
 func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
@@ -517,6 +558,20 @@ func TestRequirementsScannersTxt_SoupsieveNoLongerOnStaleVulnerableVersion(t *te
 	}
 }
 
+func TestRequirementsScannersTxt_PyJWTNoLongerOnStaleVulnerableVersion(t *testing.T) {
+	txt := readRepoFile(t, requirementsScannersTxt)
+	if strings.Contains(txt, "pyjwt==2.13.0") {
+		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable pyjwt==2.13.0 pin")
+	}
+}
+
+func TestRequirementsScannersTxt_Urllib3NoLongerOnStaleVulnerableVersion(t *testing.T) {
+	txt := readRepoFile(t, requirementsScannersTxt)
+	if strings.Contains(txt, "urllib3==2.7.0") {
+		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable urllib3==2.7.0 pin")
+	}
+}
+
 func TestRequirementsScannersTxt_AstevalBlockRecordsDirectAndTransitiveProvenance(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
 	block, ok := packageBlock(txt, "asteval")
@@ -654,6 +709,22 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	}
 	if soupsieveFloor != "2.9.0" {
 		t.Errorf("soupsieve floor = %q, want 2.9.0", soupsieveFloor)
+	}
+
+	pyjwtFloor, ok := floors["pyjwt"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing pyjwt>=... security floor")
+	}
+	if pyjwtFloor != "2.15.0" {
+		t.Errorf("pyjwt floor = %q, want 2.15.0", pyjwtFloor)
+	}
+
+	urllib3Floor, ok := floors["urllib3"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing urllib3>=... security floor")
+	}
+	if urllib3Floor != "2.8.0" {
+		t.Errorf("urllib3 floor = %q, want 2.8.0", urllib3Floor)
 	}
 
 	for name, floor := range floors {

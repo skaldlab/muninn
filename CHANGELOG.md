@@ -10,6 +10,11 @@
 - soupsieve floor raised to >=2.9.0 for GHSA-gjv8-xp57-g29c and
   GHSA-j934-xhv5-fg8f (CVE-2026-86000 / CVE-2026-85999); lockfile
   resolves to 2.10.
+- PyJWT floor raised to >=2.15.0 (hashed override to 2.15.1) for
+  GHSA-ffc3-869f-jxw9 and related 2.14/2.15 JWT hardening advisories;
+  semgrep still requires `pyjwt~=2.13.0`.
+- urllib3 floor raised to >=2.8.0 for GHSA-8988-9cw3-xx77,
+  GHSA-vxq7-64xx-v4gw, and GHSA-gh4c-6fx4-qh6g; lockfile resolves to 2.8.0.
 - checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x` reintroduce
   transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
