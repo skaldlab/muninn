@@ -4,6 +4,18 @@
 
 ### Changed
 
+- checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x` reintroduce
+  transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
+  `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
+- The secure `aiohttp>=3.14.3` floor remains enforced.
+
+## [0.3.13] - 2026-10-01
+
+### Changed
+
+- Docker image scanner updates: osv-scanner `2.6.0`, trivy `0.75.0`,
+  semgrep `1.178.0`, zizmor `1.30.1` (checkov remains at `3.2.531`
+  pending a fixed ecdsa or checkov constraint change).
 - anyio floor raised to >=4.14.2 for GHSA-82r6-8w77-94w6 and
   GHSA-5p39-cfhj-2xmp (CVE-2026-63374 / CVE-2026-64847); lockfile
   resolves to 4.15.1.
@@ -15,10 +27,6 @@
   semgrep still requires `pyjwt~=2.13.0`.
 - urllib3 floor raised to >=2.8.0 for GHSA-8988-9cw3-xx77,
   GHSA-vxq7-64xx-v4gw, and GHSA-gh4c-6fx4-qh6g; lockfile resolves to 2.8.0.
-- checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x` reintroduce
-  transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
-  `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
-- The secure `aiohttp>=3.14.3` floor remains enforced.
 
 ## [0.3.12] - 2026-09-07
 
