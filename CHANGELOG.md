@@ -4,6 +4,12 @@
 
 ### Changed
 
+- anyio floor raised to >=4.14.2 for GHSA-82r6-8w77-94w6 and
+  GHSA-5p39-cfhj-2xmp (CVE-2026-63374 / CVE-2026-64847); lockfile
+  resolves to 4.15.1.
+- soupsieve floor raised to >=2.9.0 for GHSA-gjv8-xp57-g29c and
+  GHSA-j934-xhv5-fg8f (CVE-2026-86000 / CVE-2026-85999); lockfile
+  resolves to 2.10.
 - checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x` reintroduce
   transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.

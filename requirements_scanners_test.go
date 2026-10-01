@@ -228,6 +228,30 @@ func TestRequirementsScannersIn_CryptographySecurityFloor(t *testing.T) {
 	}
 }
 
+func TestRequirementsScannersIn_AnyioSecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["anyio"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no anyio>=... security floor")
+	}
+	if got != "4.14.2" {
+		t.Errorf("anyio floor = %q, want 4.14.2", got)
+	}
+}
+
+func TestRequirementsScannersIn_SoupsieveSecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["soupsieve"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no soupsieve>=... security floor")
+	}
+	if got != "2.9.0" {
+		t.Errorf("soupsieve floor = %q, want 2.9.0", got)
+	}
+}
+
 // TestPinVersionRegexRejectsPrereleaseSuffixes keeps pin/floor regexes on
 // numeric dotted versions so compareVersions and lockfile parsing stay stable.
 func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
@@ -479,6 +503,20 @@ func TestRequirementsScannersTxt_AstevalNoLongerOnStaleVulnerableVersion(t *test
 	}
 }
 
+func TestRequirementsScannersTxt_AnyioNoLongerOnStaleVulnerableVersion(t *testing.T) {
+	txt := readRepoFile(t, requirementsScannersTxt)
+	if strings.Contains(txt, "anyio==4.13.0") {
+		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable anyio==4.13.0 pin")
+	}
+}
+
+func TestRequirementsScannersTxt_SoupsieveNoLongerOnStaleVulnerableVersion(t *testing.T) {
+	txt := readRepoFile(t, requirementsScannersTxt)
+	if strings.Contains(txt, "soupsieve==2.8.4") {
+		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable soupsieve==2.8.4 pin")
+	}
+}
+
 func TestRequirementsScannersTxt_AstevalBlockRecordsDirectAndTransitiveProvenance(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
 	block, ok := packageBlock(txt, "asteval")
@@ -600,6 +638,22 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	}
 	if astevalFloor != "1.0.10" {
 		t.Errorf("asteval floor = %q, want 1.0.10", astevalFloor)
+	}
+
+	anyioFloor, ok := floors["anyio"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing anyio>=... security floor")
+	}
+	if anyioFloor != "4.14.2" {
+		t.Errorf("anyio floor = %q, want 4.14.2", anyioFloor)
+	}
+
+	soupsieveFloor, ok := floors["soupsieve"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing soupsieve>=... security floor")
+	}
+	if soupsieveFloor != "2.9.0" {
+		t.Errorf("soupsieve floor = %q, want 2.9.0", soupsieveFloor)
 	}
 
 	for name, floor := range floors {
