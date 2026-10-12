@@ -29,7 +29,7 @@ ARG ACTIONLINT_VERSION=1.7.12
 # renovate: datasource=github-releases depName=boostsecurityio/poutine
 ARG POUTINE_VERSION=1.1.6
 # renovate: datasource=github-releases depName=google/osv-scanner
-ARG OSV_SCANNER_VERSION=2.6.0
+ARG OSV_SCANNER_VERSION=2.7.0
 # renovate: datasource=github-releases depName=aquasecurity/trivy
 ARG TRIVY_VERSION=0.75.0
 
@@ -94,8 +94,8 @@ RUN <<'EOF'
 set -eu
 arch="${TARGETARCH:-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')}"
 case "$arch" in
-  amd64) asset="osv-scanner_linux_amd64"; sha="ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108" ;;
-  arm64) asset="osv-scanner_linux_arm64"; sha="2c71403eb443d05891c4f268c3ad771cf4f16e5443463fd7851ef8f454d3c7e4" ;;
+  amd64) asset="osv-scanner_linux_amd64"; sha="160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b" ;;
+  arm64) asset="osv-scanner_linux_arm64"; sha="4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7" ;;
   *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 curl -fsSL -o /usr/local/bin/osv-scanner "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/${asset}"
