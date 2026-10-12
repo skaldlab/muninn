@@ -293,6 +293,18 @@ func TestRequirementsScannersIn_Urllib3SecurityFloor(t *testing.T) {
 	}
 }
 
+func TestRequirementsScannersIn_MultidictSecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["multidict"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no multidict>=... security floor")
+	}
+	if got != "6.9.1" {
+		t.Errorf("multidict floor = %q, want 6.9.1", got)
+	}
+}
+
 // TestPinVersionRegexRejectsPrereleaseSuffixes keeps pin/floor regexes on
 // numeric dotted versions so compareVersions and lockfile parsing stay stable.
 func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
@@ -572,6 +584,13 @@ func TestRequirementsScannersTxt_Urllib3NoLongerOnStaleVulnerableVersion(t *test
 	}
 }
 
+func TestRequirementsScannersTxt_MultidictNoLongerOnStaleVulnerableVersion(t *testing.T) {
+	txt := readRepoFile(t, requirementsScannersTxt)
+	if strings.Contains(txt, "multidict==6.7.1") {
+		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable multidict==6.7.1 pin")
+	}
+}
+
 func TestRequirementsScannersTxt_AstevalBlockRecordsDirectAndTransitiveProvenance(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
 	block, ok := packageBlock(txt, "asteval")
@@ -725,6 +744,14 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	}
 	if urllib3Floor != "2.8.0" {
 		t.Errorf("urllib3 floor = %q, want 2.8.0", urllib3Floor)
+	}
+
+	multidictFloor, ok := floors["multidict"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing multidict>=... security floor")
+	}
+	if multidictFloor != "6.9.1" {
+		t.Errorf("multidict floor = %q, want 6.9.1", multidictFloor)
 	}
 
 	for name, floor := range floors {

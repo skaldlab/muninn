@@ -4,6 +4,8 @@
 
 ### Changed
 
+- multidict floor raised to >=6.9.1 for GHSA-54p9-h82j-f925
+  (CVE-2026-104874 items-view reference leak).
 - checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x` reintroduce
   transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
