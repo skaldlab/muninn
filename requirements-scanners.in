@@ -60,3 +60,8 @@ pyjwt>=2.15.0
 # GHSA-vxq7-64xx-v4gw, GHSA-gh4c-6fx4-qh6g (CVE-2026-97687 / 97689 / 97688).
 # Fixed in 2.8.0.
 urllib3>=2.8.0
+
+# Security floor for checkov's multidict transitive (via aiohttp):
+# GHSA-54p9-h82j-f925 (CVE-2026-104874) reference leak in items-view
+# union/subtraction. Affected 6.7.0–6.9.0; fixed in 6.9.1.
+multidict>=6.9.1
