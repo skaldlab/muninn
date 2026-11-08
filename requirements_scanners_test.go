@@ -132,8 +132,8 @@ func TestRequirementsScannersIn_ZizmorPinnedToPatchedRelease(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no exact zizmor==... pin")
 	}
-	if got != "1.30.1" {
-		t.Errorf("zizmor pin = %q, want 1.30.1", got)
+	if got != "1.32.0" {
+		t.Errorf("zizmor pin = %q, want 1.32.0", got)
 	}
 }
 
@@ -151,8 +151,8 @@ func TestRequirementsScannersIn_GitPythonSecurityFloorAdded(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no gitpython>=... security floor")
 	}
-	if got != "3.1.59" {
-		t.Errorf("gitpython floor = %q, want 3.1.59", got)
+	if got != "3.2.1" {
+		t.Errorf("gitpython floor = %q, want 3.2.1", got)
 	}
 }
 
@@ -165,8 +165,8 @@ func TestRequirementsScannersIn_AiohttpSecurityFloor(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no aiohttp>=... security floor")
 	}
-	if got != "3.14.3" {
-		t.Errorf("aiohttp floor = %q, want 3.14.3", got)
+	if got != "3.14.5" {
+		t.Errorf("aiohttp floor = %q, want 3.14.5", got)
 	}
 }
 
@@ -252,20 +252,70 @@ func TestRequirementsScannersIn_SoupsieveSecurityFloor(t *testing.T) {
 	}
 }
 
-func TestRequirementsScannersOverrides_PyJWTForcedToPatchedRelease(t *testing.T) {
+func TestRequirementsScannersOverrides_MCPForcedToPatchedRelease(t *testing.T) {
 	data, err := os.ReadFile("requirements-scanners.overrides")
 	if err != nil {
 		t.Fatalf("read requirements-scanners.overrides: %v", err)
 	}
 	overrides := string(data)
-	if !strings.Contains(overrides, "pyjwt==2.15.1") {
-		t.Errorf("requirements-scanners.overrides must force pyjwt==2.15.1 because semgrep pins ~=2.13.0, got: %q", overrides)
+	if !strings.Contains(overrides, "mcp==1.30.0") {
+		t.Errorf("requirements-scanners.overrides must force mcp==1.30.0 because semgrep pins ==1.29.0, got: %q", overrides)
 	}
 	if !strings.Contains(overrides, "--hash=sha256:") {
-		t.Errorf("pyjwt override must include --hash=sha256 so Docker --require-hashes install succeeds, got: %q", overrides)
+		t.Errorf("mcp override must include --hash=sha256 so Docker --require-hashes install succeeds, got: %q", overrides)
 	}
-	if !strings.Contains(overrides, "GHSA-ffc3-869f-jxw9") {
-		t.Errorf("pyjwt override is missing GHSA-ffc3-869f-jxw9 rationale, got: %q", overrides)
+	if !strings.Contains(overrides, "GHSA-84m7-p3x7-pcfv") {
+		t.Errorf("mcp override is missing GHSA-84m7-p3x7-pcfv rationale, got: %q", overrides)
+	}
+}
+
+func TestRequirementsScannersOverrides_OpenTelemetryForcedToPatchedRelease(t *testing.T) {
+	data, err := os.ReadFile("requirements-scanners.overrides")
+	if err != nil {
+		t.Fatalf("read requirements-scanners.overrides: %v", err)
+	}
+	overrides := string(data)
+	if !strings.Contains(overrides, "opentelemetry-api==1.45.2") {
+		t.Errorf("requirements-scanners.overrides must force opentelemetry-api==1.45.2 because semgrep pins ~=1.37.0, got: %q", overrides)
+	}
+	if !strings.Contains(overrides, "GHSA-xcq7-p3pf-p88h") {
+		t.Errorf("opentelemetry override is missing GHSA-xcq7-p3pf-p88h rationale, got: %q", overrides)
+	}
+}
+
+func TestRequirementsScannersIn_CertifiSecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["certifi"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no certifi>=... security floor")
+	}
+	if got != "2026.10.19" {
+		t.Errorf("certifi floor = %q, want 2026.10.19", got)
+	}
+}
+
+func TestRequirementsScannersIn_MCPSecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["mcp"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no mcp>=... security floor")
+	}
+	if got != "1.30.0" {
+		t.Errorf("mcp floor = %q, want 1.30.0", got)
+	}
+}
+
+func TestRequirementsScannersIn_OpenTelemetryAPISecurityFloor(t *testing.T) {
+	in := readRepoFile(t, requirementsScannersIn)
+	floors := parsePins(floorPinLineRE, in)
+	got, ok := floors["opentelemetry-api"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in has no opentelemetry-api>=... security floor")
+	}
+	if got != "1.45.1" {
+		t.Errorf("opentelemetry-api floor = %q, want 1.45.1", got)
 	}
 }
 
@@ -314,7 +364,7 @@ func TestPinVersionRegexRejectsPrereleaseSuffixes(t *testing.T) {
 		line string
 		want bool
 	}{
-		{"exact release", exactPinLineRE, "zizmor==1.30.1", true},
+		{"exact release", exactPinLineRE, "zizmor==1.32.0", true},
 		{"exact rc rejected", exactPinLineRE, "zizmor==1.29.0rc1", false},
 		{"floor release", floorPinLineRE, "aiohttp>=3.14.1", true},
 		{"floor alpha rejected", floorPinLineRE, "aiohttp>=3.14.1a1", false},
@@ -365,15 +415,15 @@ func TestPrecedingCommentBlock(t *testing.T) {
 // GHSA that motivated the floor to sit in the comment block directly above it.
 func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
-	idx := strings.Index(in, "gitpython>=3.1.59")
+	idx := strings.Index(in, "gitpython>=3.2.1")
 	if idx < 0 {
-		t.Fatalf("gitpython>=3.1.59 floor not found in requirements-scanners.in")
+		t.Fatalf("gitpython>=3.2.1 floor not found in requirements-scanners.in")
 	}
 	// Only the contiguous comment block immediately above the floor counts;
 	// an unrelated earlier GHSA mention must not satisfy this assertion.
 	block := precedingCommentBlock(in[:idx])
-	if !strings.Contains(block, "GHSA-7833-fr7j-v32q") {
-		t.Errorf("gitpython>=3.1.59 comment block is missing GHSA-7833-fr7j-v32q, got: %q", block)
+	if !strings.Contains(block, "GHSA-83vg-56qc-22m7") {
+		t.Errorf("gitpython>=3.2.1 comment block is missing GHSA-83vg-56qc-22m7, got: %q", block)
 	}
 }
 
@@ -381,9 +431,9 @@ func TestRequirementsScannersIn_GitPythonFloorHasRationaleComment(t *testing.T) 
 // advisories listed when a new GHSA is appended, so history is not silently dropped.
 func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testing.T) {
 	in := readRepoFile(t, requirementsScannersIn)
-	idx := strings.Index(in, "gitpython>=3.1.59")
+	idx := strings.Index(in, "gitpython>=3.2.1")
 	if idx < 0 {
-		t.Fatalf("gitpython>=3.1.59 floor not found in requirements-scanners.in")
+		t.Fatalf("gitpython>=3.2.1 floor not found in requirements-scanners.in")
 	}
 	block := precedingCommentBlock(in[:idx])
 	// The rationale comment accumulates every GHSA advisory that has driven a
@@ -405,6 +455,13 @@ func TestRequirementsScannersIn_GitPythonFloorCommentListsAllKnownGHSAs(t *testi
 		"GHSA-284h-m62q-gf8w",
 		"GHSA-8mcc-hrx5-hvxc",
 		"GHSA-5xxx-qhh7-9287",
+		"GHSA-23mf-xhv8-69c2",
+		"GHSA-83vg-56qc-22m7",
+		"GHSA-f9j4-qggq-h239",
+		"GHSA-m64x-33q8-m5h7",
+		"GHSA-w8jc-g24h-crhw",
+		"GHSA-fx3j-rwgx-fr94",
+		"GHSA-gq48-pqfc-9p58",
 	} {
 		if !strings.Contains(block, ghsa) {
 			t.Errorf("gitpython floor rationale comment is missing %s, got: %q", ghsa, block)
@@ -485,7 +542,7 @@ func TestRequirementsScannersTxt_ZizmorBlockHasValidHashesAndProvenance(t *testi
 	if !ok {
 		t.Fatalf("requirements-scanners.txt has no zizmor entry")
 	}
-	if !strings.HasPrefix(block, "zizmor==1.30.1") {
+	if !strings.HasPrefix(block, "zizmor==1.32.0") {
 		t.Errorf("zizmor block does not start with the expected pin, got: %q", block)
 	}
 
@@ -529,7 +586,7 @@ func TestRequirementsScannersTxt_GitPythonSatisfiesInFloor(t *testing.T) {
 // TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion pins the
 // resolved lockfile version so an accidental recompile onto another line fails CI.
 func TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion(t *testing.T) {
-	const want = "3.1.62"
+	const want = "3.2.1"
 	txt := readRepoFile(t, requirementsScannersTxt)
 	got, ok := parsePins(lockedPinLineRE, txt)["gitpython"]
 	if !ok {
@@ -542,7 +599,7 @@ func TestRequirementsScannersTxt_GitPythonLockedAtExpectedVersion(t *testing.T) 
 
 func TestRequirementsScannersTxt_GitPythonNoLongerOnStaleVulnerableVersion(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
-	for _, stale := range []string{"gitpython==3.1.50", "gitpython==3.1.54", "gitpython==3.1.57", "gitpython==3.1.58"} {
+	for _, stale := range []string{"gitpython==3.1.50", "gitpython==3.1.54", "gitpython==3.1.57", "gitpython==3.1.58", "gitpython==3.1.62"} {
 		if strings.Contains(txt, stale) {
 			t.Errorf("requirements-scanners.txt still contains the stale, vulnerable %s pin", stale)
 		}
@@ -694,8 +751,8 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in missing aiohttp>=... security floor")
 	}
-	if aiohttpFloor != "3.14.3" {
-		t.Errorf("aiohttp floor = %q, want 3.14.3", aiohttpFloor)
+	if aiohttpFloor != "3.14.5" {
+		t.Errorf("aiohttp floor = %q, want 3.14.5", aiohttpFloor)
 	}
 
 	cryptographyFloor, ok := floors["cryptography"]
@@ -752,6 +809,30 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	}
 	if multidictFloor != "6.9.1" {
 		t.Errorf("multidict floor = %q, want 6.9.1", multidictFloor)
+	}
+
+	certifiFloor, ok := floors["certifi"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing certifi>=... security floor")
+	}
+	if certifiFloor != "2026.10.19" {
+		t.Errorf("certifi floor = %q, want 2026.10.19", certifiFloor)
+	}
+
+	mcpFloor, ok := floors["mcp"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing mcp>=... security floor")
+	}
+	if mcpFloor != "1.30.0" {
+		t.Errorf("mcp floor = %q, want 1.30.0", mcpFloor)
+	}
+
+	otelFloor, ok := floors["opentelemetry-api"]
+	if !ok {
+		t.Fatalf("requirements-scanners.in missing opentelemetry-api>=... security floor")
+	}
+	if otelFloor != "1.45.1" {
+		t.Errorf("opentelemetry-api floor = %q, want 1.45.1", otelFloor)
 	}
 
 	for name, floor := range floors {

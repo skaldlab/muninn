@@ -1,24 +1,34 @@
 # Top-level pins for the pip-installed scanners. Renovate keeps these current;
 # requirements-scanners.txt is the hash-locked, multi-arch output compiled from
 # this file (make scanners-lock). Do not edit the .txt by hand.
-semgrep==1.178.0
-# checkov 3.2.532+ and 3.3.x pull ecdsa>=0.19.0,<1.0.0; current ecdsa releases
+semgrep==1.184.0
+# checkov 3.2.532+ and 3.3.x/3.4.x pull ecdsa>=0.19.0,<1.0.0; current ecdsa releases
 # are affected by PYSEC-2026-1325 / CVE-2024-23342 with no fixed release yet.
 # Keep checkov at 3.2.531 until checkov drops/replaces ecdsa or a fixed ecdsa is available.
 checkov==3.2.531
-zizmor==1.30.1
+zizmor==1.32.0
 
-# Security floor for checkov's aiohttp dependency: keep it on the patched line.
-aiohttp>=3.14.3
+# Security floor for checkov's aiohttp dependency (GHSA-2g87-pp6c-29x5,
+# GHSA-5wr8-gcqf-gqf3 / CVE-2026-111064, GHSA-9xw5-w5jj-pvcg / CVE-2026-111066,
+# GHSA-494j-54xm-rwp3 / CVE-2026-111063, GHSA-6cjc-53gc-5rqm / CVE-2026-111065,
+# GHSA-f9xw-jh8m-3mwq / CVE-2026-111748, GHSA-pqxq-w44r-73xw / CVE-2026-111750,
+# GHSA-gx76-c99x-2c96 / CVE-2026-111749). Fixed in 3.14.4; keep the lock on
+# the current patched line.
+aiohttp>=3.14.5
 
 # Security floor for checkov's GitPython dependency (GHSA-2f96-g7mh-g2hx,
 # GHSA-956x-8gvw-wg5v, GHSA-rwj8-pgh3-r573, GHSA-v396-v7q4-x2qj,
 # GHSA-94p4-4cq8-9g67, GHSA-hmq2-w58f-27jc, GHSA-4gmw-gg2m-w46p,
 # GHSA-9rj7-rf2p-w77r, GHSA-hh9p-6wh2-4mfc, GHSA-jm78-9fvv-mhgr,
 # GHSA-wvpp-8hx9-p66j, GHSA-7833-fr7j-v32q, GHSA-284h-m62q-gf8w,
-# GHSA-8mcc-hrx5-hvxc, GHSA-5xxx-qhh7-9287). checkov allows
-# gitpython<4,>=3.1.30; keep the lock on the patched line.
-gitpython>=3.1.59
+# GHSA-8mcc-hrx5-hvxc, GHSA-5xxx-qhh7-9287, GHSA-23mf-xhv8-69c2 /
+# CVE-2026-110859, GHSA-83vg-56qc-22m7 / CVE-2026-114145,
+# GHSA-f9j4-qggq-h239 / CVE-2026-110858, GHSA-m64x-33q8-m5h7 /
+# CVE-2026-110856, GHSA-w8jc-g24h-crhw / CVE-2026-110857,
+# GHSA-fx3j-rwgx-fr94 / CVE-2026-110855, GHSA-gq48-pqfc-9p58 /
+# CVE-2026-110860). checkov allows gitpython<4,>=3.1.30; keep the lock on
+# the patched line (3.2.1 clears the 3.1.62 advisories).
+gitpython>=3.2.1
 
 # Security floor for checkov's cryptography dependency (GHSA-g6cj-pr64-35w5 /
 # CVE-2026-69247: PKCS#7 EnvelopedData Bleichenbacher oracle). Fixed in 50.0.0;
@@ -52,8 +62,7 @@ soupsieve>=2.9.0
 # GHSA-r6x4-923q-g947, GHSA-w2cx-738m-mc7w, GHSA-2gx3-rcp4-g85q,
 # GHSA-42vr-xj54-vc7v, GHSA-8wjv-2p76-3863, GHSA-gvp8-978c-rx2q,
 # GHSA-hxm8-2xgr-2p9m, GHSA-jwrc-g2q2-pq5p, GHSA-w6j9-cwv2-h6wq).
-# semgrep still requires pyjwt~=2.13.0, so requirements-scanners.overrides
-# forces 2.15.1; this floor keeps the lock from drifting back.
+# semgrep 1.184.0 requires pyjwt[crypto]>=2.15.0,<3.
 pyjwt>=2.15.0
 
 # Security floor for urllib3 (shared scanner transitive): GHSA-8988-9cw3-xx77,
@@ -65,3 +74,22 @@ urllib3>=2.8.0
 # GHSA-54p9-h82j-f925 (CVE-2026-104874) reference leak in items-view
 # union/subtraction. Affected 6.7.0–6.9.0; fixed in 6.9.1.
 multidict>=6.9.1
+
+# Security floor for certifi (shared scanner transitive): GHSA-6q48-6c7w-9gw2 /
+# PYSEC-2026-4320 emSign root with compromised intermediate keys. Fixed in
+# 2026.10.18; semgrep 1.184.0 also requires >=2026.10.19.
+certifi>=2026.10.19
+
+# Security floor for semgrep's mcp transitive: GHSA-5h93-6whr-6q8j,
+# GHSA-84m7-p3x7-pcfv, GHSA-rwrf-2pqf-9j8j, GHSA-w4fh-qvv9-3v23. Fixed in
+# 1.30.0 on the 1.x line. semgrep still requires mcp==1.29.0, so
+# requirements-scanners.overrides forces 1.30.0; this floor keeps the lock
+# from drifting back.
+mcp>=1.30.0
+
+# Security floor for semgrep's opentelemetry-api transitive:
+# GHSA-xcq7-p3pf-p88h unbounded tracestate parsing. Fixed in 1.45.1.
+# semgrep still requires opentelemetry-api~=1.37.0, so
+# requirements-scanners.overrides forces the patched OpenTelemetry stack;
+# this floor keeps the lock from drifting back.
+opentelemetry-api>=1.45.1
