@@ -76,6 +76,10 @@ func TestMain(m *testing.M) {
 		runFakeCheckov()
 		return
 	}
+	if os.Getenv("MUNINN_FAKE_PIPELINE_CHECK") == "1" {
+		runFakePipelineCheck()
+		return
+	}
 	os.Exit(m.Run())
 }
 

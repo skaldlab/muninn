@@ -72,6 +72,9 @@ func run() int {
 	defer stop()
 
 	cfg := loadConfig(*configPath, *target)
+	if isBitbucketCI() {
+		config.ApplyBitbucketScannerDefaults(cfg)
+	}
 
 	if *failOn != "" {
 		cfg.FailOn = *failOn
@@ -131,6 +134,10 @@ func scan(ctx context.Context, cfg *config.Config, target, outputFormats string)
 		}
 	}
 
+	if err := uploadBitbucketInsights(ctx, findings, cfg.FailOn); err != nil {
+		fmt.Fprintf(os.Stderr, "muninn: Code Insights: %v\n", err)
+	}
+
 	counts := countActiveFindings(findings)
 	if err := writeGitHubOutputs(counts, sarifPath, jsonPath); err != nil {
 		fmt.Fprintf(os.Stderr, "muninn: writing GitHub outputs: %v\n", err)
@@ -147,6 +154,7 @@ func activeScanners() []scanner.Scanner {
 		scanner.NewZizmor(),
 		scanner.NewActionlint(),
 		scanner.NewPoutine(),
+		scanner.NewPipelineCheck(),
 		scanner.NewSemgrep(),
 		scanner.NewOSVScanner(),
 		scanner.NewTrivy(),

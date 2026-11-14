@@ -1,4 +1,4 @@
-.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums scanner-checksums-check scanner-checksums-write scanners-lock
+.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums scanner-checksums-check scanner-checksums-write scanners-lock pipeline-check-lock
 
 test:
 	go test -race ./...
@@ -49,3 +49,8 @@ scanners-lock:
 	uv pip compile --universal --generate-hashes --python-version 3.14 \
 		--override requirements-scanners.overrides \
 		requirements-scanners.in -o requirements-scanners.txt
+
+# Isolated lockfile for pipeline-check (separate from checkov/semgrep boto3 pins).
+pipeline-check-lock:
+	uv pip compile --universal --generate-hashes --python-version 3.14 \
+		requirements-pipeline-check.in -o requirements-pipeline-check.txt

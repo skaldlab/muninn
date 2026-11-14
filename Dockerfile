@@ -154,6 +154,16 @@ RUN pip install --no-cache-dir uv && \
     rm /tmp/requirements-scanners.txt /tmp/requirements-scanners.overrides && \
     semgrep --version && checkov --version && zizmor --version
 
+# pipeline-check needs boto3>=1.43.9; checkov 3.2.531 pins boto3==1.35.49.
+# Install into an isolated venv so the two trees do not conflict.
+COPY requirements-pipeline-check.txt /tmp/requirements-pipeline-check.txt
+RUN uv venv /opt/pipeline-check && \
+    uv pip install --python /opt/pipeline-check/bin/python --no-cache --require-hashes \
+      -r /tmp/requirements-pipeline-check.txt && \
+    ln -s /opt/pipeline-check/bin/pipeline_check /usr/local/bin/pipeline_check && \
+    rm /tmp/requirements-pipeline-check.txt && \
+    pipeline_check --version
+
 # Static Go scanner binaries
 COPY --from=tools /usr/local/bin/gitleaks    /usr/local/bin/gitleaks
 COPY --from=tools /usr/local/bin/actionlint  /usr/local/bin/actionlint

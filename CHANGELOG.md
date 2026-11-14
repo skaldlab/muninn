@@ -8,6 +8,27 @@
   reintroduce transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.
 
+## [0.4.0] - 2026-11-14
+
+### Added
+
+- Bitbucket Cloud Pipelines support via `pipe: docker://ghcr.io/skaldlab/muninn:…`:
+  idempotent PR comment upsert, Code Insights report/annotations, example
+  pipeline, and `pipe.yml`. GitHub Actions–oriented scanners (`zizmor`,
+  `actionlint`, `poutine`) default to off on Bitbucket unless explicitly
+  enabled in `muninn.yml`.
+- `pipeline-check` scanner (`pipeline-check==1.19.0`) for Bitbucket Pipelines
+  YAML security posture (`BB-*` rules). Defaults to on in Bitbucket CI and off
+  elsewhere. Installed in an isolated Docker venv (separate from checkov’s
+  pinned boto3).
+- Bitbucket end-to-end tests (`bitbucket_e2e_test.go` and
+  `integration/bitbucket_test.go`) that fake the Cloud API via
+  `BITBUCKET_API_URL` (no live Bitbucket credentials required).
+
+### Changed
+
+- CI coverage gate raised from 90% to 95%.
+
 ## [0.3.15] - 2026-11-08
 
 ### Changed

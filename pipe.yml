@@ -1,0 +1,23 @@
+name: Muninn Security Scan
+image: docker://ghcr.io/skaldlab/muninn:0.4.0
+description: |
+  Run Muninn's multi-scanner security suite in Bitbucket Pipelines.
+  Posts an idempotent PR comment and uploads a Code Insights report when
+  BITBUCKET_ACCESS_TOKEN is set. Prefer pipe: docker://… for v1; this file
+  documents variables for a future Bitbucket-hosted pipe pointer repo.
+variables:
+  - name: FAIL_ON
+    description: Minimum severity that fails the step (critical, high, medium, low, info).
+    default: high
+  - name: OUTPUT_FORMATS
+    description: Comma-separated report formats (json, sarif, comment).
+    default: sarif,json,comment
+  - name: CONFIG_PATH
+    description: Path to muninn.yml relative to the repository root.
+    default: muninn.yml
+  - name: SCAN_TARGET
+    description: Path to scan (repository root by default).
+    default: .
+  - name: BITBUCKET_ACCESS_TOKEN
+    description: Repository Access Token with Pull requests Write and Repository Read.
+    default: $BITBUCKET_ACCESS_TOKEN

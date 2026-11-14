@@ -16,7 +16,7 @@ const (
 )
 
 // Finding is the canonical output unit for every scanner in Muninn.
-// All eight scanners produce []Finding; reporters consume []Finding.
+// All scanners produce []Finding; reporters consume []Finding.
 // Scanner-specific fields that have no universal equivalent go in Metadata.
 type Finding struct {
 	// ID is a stable unique identifier for deduplication across runs.
