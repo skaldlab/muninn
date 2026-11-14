@@ -247,8 +247,8 @@ func TestRequirementsScannersIn_SoupsieveSecurityFloor(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in has no soupsieve>=... security floor")
 	}
-	if got != "2.9.0" {
-		t.Errorf("soupsieve floor = %q, want 2.9.0", got)
+	if got != "4.0.0" {
+		t.Errorf("soupsieve floor = %q, want 4.0.0", got)
 	}
 }
 
@@ -622,8 +622,10 @@ func TestRequirementsScannersTxt_AnyioNoLongerOnStaleVulnerableVersion(t *testin
 
 func TestRequirementsScannersTxt_SoupsieveNoLongerOnStaleVulnerableVersion(t *testing.T) {
 	txt := readRepoFile(t, requirementsScannersTxt)
-	if strings.Contains(txt, "soupsieve==2.8.4") {
-		t.Errorf("requirements-scanners.txt still contains the stale, vulnerable soupsieve==2.8.4 pin")
+	for _, stale := range []string{"soupsieve==2.8.4", "soupsieve==2.9.0", "soupsieve==2.10"} {
+		if strings.Contains(txt, stale) {
+			t.Errorf("requirements-scanners.txt still contains the stale, vulnerable %s pin", stale)
+		}
 	}
 }
 
@@ -783,8 +785,8 @@ func TestRequirementsScannersLockfile_AllFloorsSatisfied(t *testing.T) {
 	if !ok {
 		t.Fatalf("requirements-scanners.in missing soupsieve>=... security floor")
 	}
-	if soupsieveFloor != "2.9.0" {
-		t.Errorf("soupsieve floor = %q, want 2.9.0", soupsieveFloor)
+	if soupsieveFloor != "4.0.0" {
+		t.Errorf("soupsieve floor = %q, want 4.0.0", soupsieveFloor)
 	}
 
 	pyjwtFloor, ok := floors["pyjwt"]

@@ -28,6 +28,9 @@
 ### Changed
 
 - CI coverage gate raised from 90% to 95%.
+- soupsieve floor raised to >=4.0.0 for GHSA-6655-6qjp-jx7x /
+  CVE-2026-126191, GHSA-7g44-g9rc-x53w / CVE-2026-126193, and
+  GHSA-mmhr-3c5m-f64f / CVE-2026-126190 (lockfile resolves to 4.1).
 
 ## [0.3.15] - 2026-11-08
 

@@ -52,9 +52,11 @@ pydantic-settings==2.15.0
 anyio>=4.14.2
 
 # Security floor for checkov's soupsieve transitive (via beautifulsoup4):
-# GHSA-gjv8-xp57-g29c (CVE-2026-86000) and GHSA-j934-xhv5-fg8f (CVE-2026-85999)
-# CSS-selector ReDoS. Fixed in 2.9.0.
-soupsieve>=2.9.0
+# GHSA-6655-6qjp-jx7x / CVE-2026-126191 and GHSA-7g44-g9rc-x53w /
+# CVE-2026-126193 fixed in 3.0.2; GHSA-mmhr-3c5m-f64f / CVE-2026-126190
+# (descendant-combinator poly-time DoS) fixed in 4.0.0. Earlier 2.9.x floors
+# covered GHSA-gjv8-xp57-g29c / GHSA-j934-xhv5-fg8f only.
+soupsieve>=4.0.0
 
 # Security floor for checkov/semgrep PyJWT transitive: algorithm-confusion /
 # JWKS / DoS advisories fixed across 2.14.0–2.15.0 (GHSA-ffc3-869f-jxw9,
