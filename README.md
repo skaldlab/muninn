@@ -7,11 +7,11 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Go Version](https://img.shields.io/badge/Go-1.27.1-blue?logo=go)](https://go.dev/)
 
-**Muninn** is an all-in-one open-source security scanner for GitHub Actions pipelines and self-hosted CI, built by [Skald Lab](https://skaldlab.dev).
+**Muninn** is an all-in-one open-source security scanner for GitHub Actions, Bitbucket Cloud Pipelines, and self-hosted CI, built by [Skald Lab](https://skaldlab.dev).
 
 Named after Odin's raven of Memory from Norse mythology, Muninn remembers every vulnerability it has ever seen — and reports them all back in one unified format.
 
-Muninn orchestrates best-in-class open-source scanners, normalizes their output into a single finding schema, and delivers results as GitHub PR comments, SARIF uploads, and structured JSON — with a single `uses:` line.
+Muninn orchestrates best-in-class open-source scanners, normalizes their output into a single finding schema, and delivers results as CI PR comments, SARIF/Code Insights, and structured JSON.
 
 ---
 
