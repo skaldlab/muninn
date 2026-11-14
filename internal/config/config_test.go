@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -241,5 +242,39 @@ scanners:
 	ApplyBitbucketScannerDefaults(cfg)
 	if cfg.Scanners["pipeline-check"].Enabled {
 		t.Error("explicit pipeline-check enabled: false must win")
+	}
+}
+
+func TestApplyBitbucketScannerDefaults_PreservesOptionsAndIsIdempotent(t *testing.T) {
+	cfg := Defaults()
+	cfg.Scanners["zizmor"] = ScannerConfig{Enabled: true, ExcludePaths: []string{"fixtures/"}}
+	cfg.Scanners["pipeline-check"] = ScannerConfig{Enabled: false, ExcludePaths: []string{"vendor/"}}
+	cfg.Scanners["poutine"] = ScannerConfig{Enabled: false}
+	cfg.ConfiguredScanners = map[string]bool{"poutine": true, "actionlint": true}
+	cfg.Scanners["actionlint"] = ScannerConfig{Enabled: true}
+	unrelated := cfg.Scanners["semgrep"]
+	ApplyBitbucketScannerDefaults(cfg)
+	if cfg.Scanners["zizmor"].Enabled || !cfg.Scanners["pipeline-check"].Enabled {
+		t.Error("Bitbucket defaults were not applied")
+	}
+	if !reflect.DeepEqual(cfg.Scanners["zizmor"].ExcludePaths, []string{"fixtures/"}) || !reflect.DeepEqual(cfg.Scanners["pipeline-check"].ExcludePaths, []string{"vendor/"}) {
+		t.Error("scanner options were lost")
+	}
+	if cfg.Scanners["poutine"].Enabled || !cfg.Scanners["actionlint"].Enabled {
+		t.Error("explicit scanner choices were overwritten")
+	}
+	if !reflect.DeepEqual(cfg.Scanners["semgrep"], unrelated) {
+		t.Error("unrelated scanner was modified")
+	}
+	before := make(map[string]ScannerConfig, len(cfg.Scanners))
+	for name, sc := range cfg.Scanners {
+		before[name] = sc
+	}
+	ApplyBitbucketScannerDefaults(cfg)
+	if !reflect.DeepEqual(cfg.Scanners, before) {
+		t.Error("reapplying defaults changed scanner configuration")
+	}
+	if !reflect.DeepEqual(cfg.ConfiguredScanners, map[string]bool{"poutine": true, "actionlint": true}) {
+		t.Error("configured scanner tracking was modified")
 	}
 }

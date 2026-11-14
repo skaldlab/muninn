@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -275,5 +278,84 @@ func TestBitbucketPRCommentPoster_ShouldPost(t *testing.T) {
 	t.Setenv("BITBUCKET_PR_ID", "1")
 	if !p.ShouldPost() {
 		t.Fatal("ShouldPost false with PR id")
+	}
+}
+
+// A failed later page must never cause a duplicate comment to be created.
+func TestUpsertBitbucketPRComment_PaginationFailureDoesNotWrite(t *testing.T) {
+	for _, tc := range []struct {
+		name, response, want string
+		status               int
+	}{
+		{"status error", "denied", "status 403", http.StatusForbidden},
+		{"invalid JSON", "{broken", "decoding comment list", http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var requests []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests = append(requests, r.Method+" "+r.URL.Path)
+				if r.Method != http.MethodGet {
+					t.Errorf("unexpected write: %s", r.Method)
+					w.WriteHeader(500)
+					return
+				}
+				if r.Header.Get("Authorization") != "Bearer token" || r.Header.Get("Accept") != "application/json" {
+					t.Error("missing list request headers")
+				}
+				if r.URL.Path == "/page2" {
+					w.WriteHeader(tc.status)
+					_, _ = io.WriteString(w, tc.response)
+					return
+				}
+				_ = json.NewEncoder(w).Encode(bitbucketCommentList{Values: []bitbucketComment{{ID: 8, Content: bitbucketCommentContent{Raw: "unrelated"}}}, Next: "http://" + r.Host + "/page2"})
+			}))
+			defer srv.Close()
+			t.Setenv("BITBUCKET_API_URL", srv.URL)
+			err := upsertBitbucketPRComment(context.Background(), srv.Client(), "token", "ws", "repo", "1", "new")
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+			want := []string{"GET /repositories/ws/repo/pullrequests/1/comments", "GET /page2"}
+			if !reflect.DeepEqual(requests, want) {
+				t.Errorf("requests = %v, want %v", requests, want)
+			}
+		})
+	}
+}
+
+func TestDoBitbucketJSON_StatusAndPayload(t *testing.T) {
+	for _, status := range []int{200, 201, 204, 400, 401, 429, 500} {
+		t.Run(strconv.Itoa(status), func(t *testing.T) {
+			payload := `{"content":{"raw":"quoted \\\" text\\nnext line"}}`
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Error(err)
+				}
+				if r.Method != http.MethodPut || string(body) != payload {
+					t.Errorf("request = %s %q", r.Method, body)
+				}
+				for key, want := range map[string]string{"Authorization": "Bearer token", "Accept": "application/json", "Content-Type": "application/json"} {
+					if got := r.Header.Get(key); got != want {
+						t.Errorf("%s = %q, want %q", key, got, want)
+					}
+				}
+				w.WriteHeader(status)
+				if status >= 400 {
+					_, _ = io.WriteString(w, " rejected ")
+				}
+			}))
+			defer srv.Close()
+			err := doBitbucketJSON(context.Background(), srv.Client(), http.MethodPut, srv.URL, "token", []byte(payload))
+			if status < 300 {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), strconv.Itoa(status)) || !strings.Contains(err.Error(), "rejected") {
+				t.Errorf("error = %v, want status and response body", err)
+			}
+		})
 	}
 }

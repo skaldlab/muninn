@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"testing"
@@ -216,5 +217,105 @@ func TestParsePipelineCheckJSON_Empty(t *testing.T) {
 	}, ".")
 	if len(findings) != 0 {
 		t.Fatalf("passed findings should be skipped, got %d", len(findings))
+	}
+}
+
+// Exit code 1 means findings, but it must not hide a corrupt scanner report.
+func TestPipelineCheckRun_OutputAndExitStatus(t *testing.T) {
+	for _, tc := range []struct {
+		name, output, wantError string
+		exitCode, wantCount     int
+	}{
+		{name: "successful empty output"},
+		{name: "findings exit with empty output", exitCode: 1},
+		{name: "clean report", output: `{"findings":[]}`},
+		{name: "findings on successful exit", output: `{"findings":[{"check_id":"BB-001","severity":"high"}]}`, wantCount: 1},
+		{name: "malformed successful output", output: `{broken`, wantError: "parsing JSON"},
+		{name: "malformed findings output", output: `{broken`, exitCode: 1, wantError: "parsing JSON"},
+		{name: "scanner failure with valid JSON", output: `{"findings":[]}`, exitCode: 2, wantError: "running scanner"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			target := t.TempDir()
+			writePipelineCheckStub(t, target)
+			p := &PipelineCheck{lookPath: lookPathPipelineCheck(), execFunc: fakePipelineCheckExecFunc(tc.output, tc.exitCode)}
+			got, err := p.Run(context.Background(), target)
+			if tc.wantError != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.wantError) {
+					t.Fatalf("Run() error = %v, want %q", err, tc.wantError)
+				}
+				if len(got) != 0 {
+					t.Errorf("failed scan returned findings: %+v", got)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(got) != tc.wantCount {
+				t.Errorf("got %d findings, want %d", len(got), tc.wantCount)
+			}
+		})
+	}
+}
+
+func TestPipelineCheckRun_CommandArguments(t *testing.T) {
+	target := t.TempDir()
+	writePipelineCheckStub(t, target)
+	called := false
+	p := &PipelineCheck{lookPath: lookPathPipelineCheck(), execFunc: func(ctx context.Context, name string, args ...string) *exec.Cmd {
+		called = true
+		want := []string{"--pipeline", "bitbucket", "--bitbucket-path", target, "--output", "json", "--no-chains"}
+		if name != "pipeline_check" || !reflect.DeepEqual(args, want) {
+			t.Errorf("command = %s %q, want pipeline_check %q", name, args, want)
+		}
+		return fakePipelineCheckExecFunc(`{"findings":[]}`, 0)(ctx, name, args...)
+	}}
+	if _, err := p.Run(context.Background(), target); err != nil {
+		t.Fatal(err)
+	}
+	if !called {
+		t.Fatal("scanner was not executed")
+	}
+}
+
+func TestNormalizePipelineCheck_MixedResultsAndStableIdentity(t *testing.T) {
+	input := pipelineCheckFinding{CheckID: "BB-001", Title: "Unsafe pipeline", Severity: "hIgH", Resource: "/first/bitbucket-pipelines.yml", Description: "description", Recommendation: "fix it"}
+	doc := &pipelineCheckReport{Findings: []pipelineCheckFinding{{Passed: true, CheckID: "BB-PASS"}, input}}
+	got := normalizePipelineCheck(doc, "/first")
+	if len(got) != 1 {
+		t.Fatalf("got %d findings, want 1", len(got))
+	}
+	f := got[0]
+	if f.Title != input.Title || f.Tool != "pipeline-check" || f.RuleID != input.CheckID || f.Severity != normalizer.SeverityHigh || f.File != "bitbucket-pipelines.yml" || f.Line != 0 {
+		t.Errorf("normalized finding = %+v", f)
+	}
+	if f.Description != "description\n\nRecommendation: fix it" {
+		t.Errorf("description = %q", f.Description)
+	}
+	if f.RuleURL != "https://dmartinochoa.github.io/pipeline-check/providers/bitbucket/" {
+		t.Errorf("rule URL = %q", f.RuleURL)
+	}
+	if f.ID == "" || f.ID != f.Fingerprint {
+		t.Errorf("invalid identity: %+v", f)
+	}
+	input.Resource = "/second/bitbucket-pipelines.yml"
+	input.Title = "Updated title"
+	input.Description = "updated description"
+	input.Recommendation = ""
+	moved := normalizeOnePipelineCheck(input, "/second")
+	if moved.Fingerprint != f.Fingerprint {
+		t.Error("checkout location or wording changed finding identity")
+	}
+	if moved.Description != input.Description {
+		t.Errorf("description without recommendation = %q", moved.Description)
+	}
+	input.CheckID = "BB-002"
+	if normalizeOnePipelineCheck(input, "/second").Fingerprint == f.Fingerprint {
+		t.Error("different rules share an identity")
+	}
+	input.CheckID = "BB-001"
+	input.Resource = "/second/nested/bitbucket-pipelines.yml"
+	if normalizeOnePipelineCheck(input, "/second").Fingerprint == f.Fingerprint {
+		t.Error("different files share an identity")
 	}
 }

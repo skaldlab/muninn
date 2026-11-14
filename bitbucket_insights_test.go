@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -238,5 +239,127 @@ func TestUploadBitbucketInsights_AnnotationAPIError(t *testing.T) {
 	}}
 	if err := uploadBitbucketInsightsHTTP(context.Background(), findings, "info", srv.Client()); err != nil {
 		t.Fatalf("want nil (warning only), got %v", err)
+	}
+}
+
+func TestPostBitbucketAnnotations_BatchBoundaries(t *testing.T) {
+	for _, count := range []int{0, 1, 99, 100, 101, 201, 1001} {
+		t.Run(fmt.Sprint(count), func(t *testing.T) {
+			findings := []normalizer.Finding{{Suppressed: true, Fingerprint: "hidden"}}
+			for i := 0; i < count; i++ {
+				findings = append(findings, normalizer.Finding{Fingerprint: fmt.Sprint(i), Title: "finding"})
+			}
+			var batches []int
+			var ids []string
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPost || r.URL.Path != "/repositories/ws/repo/commit/sha/reports/muninn/annotations" {
+					t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+				}
+				if r.Header.Get("Authorization") != "Bearer token" || r.Header.Get("Content-Type") != "application/json" {
+					t.Error("missing request headers")
+				}
+				var batch []bitbucketAnnotation
+				if err := json.NewDecoder(r.Body).Decode(&batch); err != nil {
+					t.Error(err)
+					w.WriteHeader(400)
+					return
+				}
+				batches = append(batches, len(batch))
+				for _, a := range batch {
+					ids = append(ids, a.ExternalID)
+				}
+				w.WriteHeader(http.StatusCreated)
+			}))
+			defer srv.Close()
+			t.Setenv("BITBUCKET_API_URL", srv.URL)
+			if err := postBitbucketAnnotations(context.Background(), srv.Client(), "token", "ws", "repo", "sha", findings); err != nil {
+				t.Fatal(err)
+			}
+			want := min(count, 1000)
+			if len(ids) != want {
+				t.Fatalf("uploaded %d annotations, want %d", len(ids), want)
+			}
+			if len(batches) != (want+99)/100 {
+				t.Errorf("batches = %v", batches)
+			}
+			for i, size := range batches {
+				if size != min(100, want-i*100) {
+					t.Errorf("batch %d size = %d", i, size)
+				}
+			}
+			for i, id := range ids {
+				if id != "muninn-"+fmt.Sprint(i) {
+					t.Errorf("annotation %d ID = %q", i, id)
+				}
+			}
+		})
+	}
+}
+
+func TestPostBitbucketAnnotations_StopsAfterFailedBatch(t *testing.T) {
+	findings := make([]normalizer.Finding, 201)
+	requests := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if requests == 2 {
+			http.Error(w, "rate limited", http.StatusTooManyRequests)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	t.Setenv("BITBUCKET_API_URL", srv.URL)
+	err := postBitbucketAnnotations(context.Background(), srv.Client(), "token", "ws", "repo", "sha", findings)
+	if err == nil || !strings.Contains(err.Error(), "429") {
+		t.Fatalf("error = %v, want rate limit error", err)
+	}
+	if requests != 2 {
+		t.Errorf("requests = %d, want 2", requests)
+	}
+}
+
+func TestPutBitbucketReport_ThresholdAndSuppression(t *testing.T) {
+	for _, tc := range []struct {
+		name, failOn, result string
+		findings             []normalizer.Finding
+		visible              int
+	}{
+		{name: "below threshold", failOn: "high", result: "PASSED", findings: []normalizer.Finding{{Severity: normalizer.SeverityMedium}}, visible: 1},
+		{name: "at threshold", failOn: "high", result: "FAILED", findings: []normalizer.Finding{{Severity: normalizer.SeverityHigh}}, visible: 1},
+		{name: "suppressed critical", failOn: "high", result: "PASSED", findings: []normalizer.Finding{{Severity: normalizer.SeverityCritical, Suppressed: true}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Result  string `json:"result"`
+					Details string `json:"details"`
+					Data    []struct {
+						Value int `json:"value"`
+					} `json:"data"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Error(err)
+					return
+				}
+				if body.Result != tc.result {
+					t.Errorf("result = %q, want %q", body.Result, tc.result)
+				}
+				if len(body.Data) != 1 || body.Data[0].Value != tc.visible {
+					t.Errorf("finding count data = %+v, want %d", body.Data, tc.visible)
+				}
+				wantDetails := fmt.Sprintf("Muninn found %d security finding(s).", tc.visible)
+				if tc.visible == 0 {
+					wantDetails = "Muninn found no security issues."
+				}
+				if body.Details != wantDetails {
+					t.Errorf("details = %q, want %q", body.Details, wantDetails)
+				}
+			}))
+			defer srv.Close()
+			t.Setenv("BITBUCKET_API_URL", srv.URL)
+			if err := putBitbucketReport(context.Background(), srv.Client(), "token", "ws", "repo", "sha", tc.findings, tc.failOn); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 }
