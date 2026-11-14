@@ -1,0 +1,16 @@
+# Muninn on Bitbucket Cloud Pipelines (pull requests).
+# Create a Repository Access Token with Pull requests: Write and Repository: Read,
+# then store it as a secured repository variable named BITBUCKET_ACCESS_TOKEN.
+image: atlassian/default-image:4
+
+pipelines:
+  pull-requests:
+    "**":
+      - step:
+          name: Muninn Security Scan
+          script:
+            - pipe: docker://ghcr.io/skaldlab/muninn:0.4.0
+              variables:
+                FAIL_ON: high
+                OUTPUT_FORMATS: sarif,json,comment
+                BITBUCKET_ACCESS_TOKEN: $BITBUCKET_ACCESS_TOKEN

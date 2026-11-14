@@ -187,3 +187,9 @@ func TestJSONReporter_WriterError(t *testing.T) {
 		t.Fatal("Write() expected an error when writer fails, got nil")
 	}
 }
+
+func TestJSONSeverityRank_Unknown(t *testing.T) {
+	if got := jsonSeverityRank(normalizer.Severity("weird")); got != 0 {
+		t.Errorf("jsonSeverityRank(weird) = %d, want 0", got)
+	}
+}

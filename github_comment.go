@@ -38,10 +38,19 @@ func renderComment(ctx context.Context, findings []normalizer.Finding) (string, 
 	return buf.String(), nil
 }
 
-// postPRComment posts comment on the current pull request when running inside
-// GitHub Actions. Non-PR contexts and missing tokens are skipped without error.
-func postPRComment(ctx context.Context, comment string) error {
-	return postPRCommentHTTP(ctx, comment, http.DefaultClient)
+// githubPRCommentPoster upserts Muninn's summary via the GitHub Issues API.
+type githubPRCommentPoster struct {
+	client *http.Client
+}
+
+// ShouldPost reports whether this run is a GitHub Actions pull_request event.
+func (p *githubPRCommentPoster) ShouldPost() bool {
+	return os.Getenv("GITHUB_EVENT_NAME") == "pull_request"
+}
+
+// Upsert creates or updates the Muninn PR comment on GitHub.
+func (p *githubPRCommentPoster) Upsert(ctx context.Context, body string) error {
+	return postPRCommentHTTP(ctx, body, p.client)
 }
 
 // postPRCommentHTTP posts a PR comment using the provided HTTP client.

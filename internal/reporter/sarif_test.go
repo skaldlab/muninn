@@ -184,6 +184,8 @@ func TestToPascalCase(t *testing.T) {
 		{"CKV_AWS_18", "CkvAws18"},
 		{"single", "Single"},
 		{"", ""},
+		{"a--b", "AB"}, // empty segments from doubled separators are skipped
+		{"with.dot", "WithDot"},
 	}
 	for _, tc := range cases {
 		if got := toPascalCase(tc.in); got != tc.want {

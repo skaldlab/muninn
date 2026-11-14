@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -16,8 +17,8 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("FailOn = %q, want info", cfg.FailOn)
 	}
 
-	want := []string{"gitleaks", "semgrep", "zizmor", "actionlint", "poutine", "trivy", "osv-scanner", "checkov"}
-	for _, name := range want {
+	wantEnabled := []string{"gitleaks", "semgrep", "zizmor", "actionlint", "poutine", "trivy", "osv-scanner", "checkov"}
+	for _, name := range wantEnabled {
 		sc, ok := cfg.Scanners[name]
 		if !ok {
 			t.Errorf("Scanners[%q] missing", name)
@@ -26,6 +27,13 @@ func TestDefaults(t *testing.T) {
 		if !sc.Enabled {
 			t.Errorf("Scanners[%q].Enabled = false, want true", name)
 		}
+	}
+	pc, ok := cfg.Scanners["pipeline-check"]
+	if !ok {
+		t.Fatal("Scanners[pipeline-check] missing")
+	}
+	if pc.Enabled {
+		t.Error("pipeline-check should default to disabled outside Bitbucket CI")
 	}
 
 	// Semgrep ships with default rulesets.
@@ -165,5 +173,108 @@ func TestValidate_SuppressionToolOnlyAccepted(t *testing.T) {
 	}
 	if err := validate(cfg); err != nil {
 		t.Fatalf("validate with tool-only suppression: %v", err)
+	}
+}
+
+func TestApplyBitbucketScannerDefaults_DisablesGitHubScanners(t *testing.T) {
+	cfg := Defaults()
+	ApplyBitbucketScannerDefaults(cfg)
+	for _, name := range []string{"zizmor", "actionlint", "poutine"} {
+		if cfg.Scanners[name].Enabled {
+			t.Errorf("%s should be disabled on Bitbucket by default", name)
+		}
+	}
+	if !cfg.Scanners["gitleaks"].Enabled {
+		t.Error("gitleaks should remain enabled")
+	}
+	if !cfg.Scanners["pipeline-check"].Enabled {
+		t.Error("pipeline-check should be enabled on Bitbucket by default")
+	}
+}
+
+func TestApplyBitbucketScannerDefaults_ExplicitEnabledWins(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "muninn.yml")
+	content := []byte(`version: 1
+scanners:
+  zizmor:
+    enabled: true
+  actionlint:
+    enabled: false
+`)
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ApplyBitbucketScannerDefaults(cfg)
+	if !cfg.Scanners["zizmor"].Enabled {
+		t.Error("explicit zizmor enabled: true must win")
+	}
+	if cfg.Scanners["actionlint"].Enabled {
+		t.Error("explicit actionlint enabled: false must stay false")
+	}
+	if cfg.Scanners["poutine"].Enabled {
+		t.Error("poutine omitted from file should be disabled on Bitbucket")
+	}
+	if !cfg.Scanners["pipeline-check"].Enabled {
+		t.Error("pipeline-check omitted from file should be enabled on Bitbucket")
+	}
+}
+
+func TestApplyBitbucketScannerDefaults_ExplicitPipelineCheckOff(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "muninn.yml")
+	content := []byte(`version: 1
+scanners:
+  pipeline-check:
+    enabled: false
+`)
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ApplyBitbucketScannerDefaults(cfg)
+	if cfg.Scanners["pipeline-check"].Enabled {
+		t.Error("explicit pipeline-check enabled: false must win")
+	}
+}
+
+func TestApplyBitbucketScannerDefaults_PreservesOptionsAndIsIdempotent(t *testing.T) {
+	cfg := Defaults()
+	cfg.Scanners["zizmor"] = ScannerConfig{Enabled: true, ExcludePaths: []string{"fixtures/"}}
+	cfg.Scanners["pipeline-check"] = ScannerConfig{Enabled: false, ExcludePaths: []string{"vendor/"}}
+	cfg.Scanners["poutine"] = ScannerConfig{Enabled: false}
+	cfg.ConfiguredScanners = map[string]bool{"poutine": true, "actionlint": true}
+	cfg.Scanners["actionlint"] = ScannerConfig{Enabled: true}
+	unrelated := cfg.Scanners["semgrep"]
+	ApplyBitbucketScannerDefaults(cfg)
+	if cfg.Scanners["zizmor"].Enabled || !cfg.Scanners["pipeline-check"].Enabled {
+		t.Error("Bitbucket defaults were not applied")
+	}
+	if !reflect.DeepEqual(cfg.Scanners["zizmor"].ExcludePaths, []string{"fixtures/"}) || !reflect.DeepEqual(cfg.Scanners["pipeline-check"].ExcludePaths, []string{"vendor/"}) {
+		t.Error("scanner options were lost")
+	}
+	if cfg.Scanners["poutine"].Enabled || !cfg.Scanners["actionlint"].Enabled {
+		t.Error("explicit scanner choices were overwritten")
+	}
+	if !reflect.DeepEqual(cfg.Scanners["semgrep"], unrelated) {
+		t.Error("unrelated scanner was modified")
+	}
+	before := make(map[string]ScannerConfig, len(cfg.Scanners))
+	for name, sc := range cfg.Scanners {
+		before[name] = sc
+	}
+	ApplyBitbucketScannerDefaults(cfg)
+	if !reflect.DeepEqual(cfg.Scanners, before) {
+		t.Error("reapplying defaults changed scanner configuration")
+	}
+	if !reflect.DeepEqual(cfg.ConfiguredScanners, map[string]bool{"poutine": true, "actionlint": true}) {
+		t.Error("configured scanner tracking was modified")
 	}
 }

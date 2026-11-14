@@ -14,7 +14,7 @@
 
 ## Test plan
 
-<!-- How did you verify this? All CI checks must pass, including 90% coverage. -->
+<!-- How did you verify this? All CI checks must pass, including 95% coverage. -->
 
 - [ ] `make test`
 - [ ] `go vet ./...`

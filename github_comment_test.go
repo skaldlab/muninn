@@ -160,6 +160,49 @@ func TestPostPRCommentHTTP_APIError(t *testing.T) {
 	}
 }
 
+func TestPostPRCommentHTTP_CreateStatusError(t *testing.T) {
+	// List succeeds so sendIssueComment's non-2xx path is exercised on create.
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte("[]"))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+		_, _ = w.Write([]byte("create failed"))
+	}))
+	defer srv.Close()
+
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	t.Setenv("GITHUB_TOKEN", "token")
+	t.Setenv("GITHUB_REPOSITORY", "skaldlab/muninn")
+	t.Setenv("GITHUB_API_URL", srv.URL)
+	eventFile := filepath.Join(t.TempDir(), "event.json")
+	if err := os.WriteFile(eventFile, []byte(`{"pull_request":{"number":7}}`), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	t.Setenv("GITHUB_EVENT_PATH", eventFile)
+	if err := postPRCommentHTTP(context.Background(), "hi", srv.Client()); err != nil {
+		t.Fatalf("postPRCommentHTTP() = %v, want nil (warning only)", err)
+	}
+}
+
+func TestListIssueComments_DecodeError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"not":"an array"}`))
+	}))
+	defer srv.Close()
+
+	_, err := listIssueComments(context.Background(), srv.Client(), srv.URL, "o/r", "tok", 1)
+	if err == nil {
+		t.Fatal("expected decode error")
+	}
+	if !strings.Contains(err.Error(), "decoding comments") {
+		t.Errorf("error = %v, want decoding comments", err)
+	}
+}
+
 func TestPullRequestNumber_Success(t *testing.T) {
 	eventFile := filepath.Join(t.TempDir(), "event.json")
 	if err := os.WriteFile(eventFile, []byte(`{"pull_request":{"number":99}}`), 0644); err != nil {

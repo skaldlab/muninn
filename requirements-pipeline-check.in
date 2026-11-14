@@ -1,0 +1,5 @@
+# Isolated install for pipeline-check. Kept separate from requirements-scanners.in
+# because pipeline-check requires boto3>=1.43.9 while checkov 3.2.531 pins
+# boto3==1.35.49. The Docker image installs this into its own venv.
+# Compile: make pipeline-check-lock
+pipeline-check==1.19.0

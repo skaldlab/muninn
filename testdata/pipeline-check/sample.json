@@ -1,0 +1,80 @@
+{
+  "schema_version": "1.1",
+  "tool_version": "1.19.0",
+  "score": {
+    "score": 73,
+    "grade": "C",
+    "summary": {
+      "CRITICAL": {
+        "passed": 6,
+        "failed": 1
+      },
+      "HIGH": {
+        "passed": 13,
+        "failed": 2
+      },
+      "MEDIUM": {
+        "passed": 7,
+        "failed": 8
+      },
+      "LOW": {
+        "passed": 2,
+        "failed": 0
+      },
+      "INFO": {
+        "passed": 0,
+        "failed": 0
+      }
+    }
+  },
+  "findings": [
+    {
+      "check_id": "BB-004",
+      "title": "Deploy step missing `deployment:` environment gate",
+      "severity": "MEDIUM",
+      "confidence": "HIGH",
+      "resource": "bitbucket-pipelines.yml",
+      "description": "1 deploy-like step(s) have no `deployment:` field: pull-requests.**[0]. Without it, Bitbucket cannot enforce deployment-scoped variables, approvals, or deployment history.",
+      "recommendation": "Add `deployment: production` (or `staging` / `test`) to the step. Configure the matching environment in the repo's Deployments settings with required reviewers and secured variables.",
+      "passed": false,
+      "controls": [],
+      "cwe": [
+        "CWE-284"
+      ]
+    },
+    {
+      "check_id": "BB-005",
+      "title": "Step has no `max-time`, unbounded build",
+      "severity": "MEDIUM",
+      "confidence": "LOW",
+      "resource": "bitbucket-pipelines.yml",
+      "description": "1 step(s) have no `max-time` and will run until Bitbucket's 120-minute default kills them: pull-requests.**[0].",
+      "recommendation": "Add `max-time: <minutes>` to each step, sized to the 95th percentile of historical runtime plus margin. Bounded runs limit the blast radius of a compromised build and prevent runaway minute consumption.",
+      "passed": false,
+      "controls": [],
+      "cwe": [
+        "CWE-400"
+      ]
+    },
+    {
+      "check_id": "BB-006",
+      "title": "Artifacts not signed",
+      "severity": "MEDIUM",
+      "confidence": "LOW",
+      "resource": "bitbucket-pipelines.yml",
+      "description": "Pipeline produces build artifacts but does not invoke any signing tool (cosign, sigstore, notation). Unsigned artifacts cannot be verified downstream.",
+      "recommendation": "Add a step that runs `cosign sign` against the built image or archive, using Bitbucket OIDC for keyless signing where possible. Publish the signature next to the artifact and verify it at deploy time.",
+      "passed": false,
+      "controls": [],
+      "cwe": [
+        "CWE-345"
+      ]
+    }
+  ],
+  "scan_status": {
+    "complete": true,
+    "files_scanned": 1,
+    "files_unparsed": 0,
+    "degraded_modules": []
+  }
+}

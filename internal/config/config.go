@@ -30,6 +30,10 @@ type Config struct {
 	// Suppressions is the list of rules used to mark findings as suppressed
 	// before they reach the fail-on evaluation.
 	Suppressions []Suppression `yaml:"-"`
+
+	// ConfiguredScanners lists scanner keys that appeared under scanners: in
+	// muninn.yml. Used to distinguish explicit overrides from Defaults().
+	ConfiguredScanners map[string]bool `yaml:"-"`
 }
 
 // ScannerConfig holds the per-scanner options defined in muninn.yml.
@@ -131,7 +135,14 @@ func applyConfigFile(cfg *Config, file configYAML) error {
 		cfg.FailOn = file.FailOn
 	}
 	if file.Scanners != nil {
-		cfg.Scanners = file.Scanners
+		// Merge into Defaults() so omitted scanners (e.g. pipeline-check)
+		// keep their recommended Enabled value instead of disappearing from
+		// the map — runScanner treats a missing key as enabled.
+		cfg.ConfiguredScanners = make(map[string]bool, len(file.Scanners))
+		for name, sc := range file.Scanners {
+			cfg.Scanners[name] = sc
+			cfg.ConfiguredScanners[name] = true
+		}
 	}
 	suppressions, err := parseSuppressions(file.Suppressions)
 	if err != nil {
@@ -178,15 +189,45 @@ func Defaults() *Config {
 		Version: 1,
 		FailOn:  "info",
 		Scanners: map[string]ScannerConfig{
-			"gitleaks":    enabled,
-			"semgrep":     {Enabled: true, Rulesets: []string{"p/security-audit", "p/secrets"}},
-			"zizmor":      enabled,
-			"actionlint":  enabled,
-			"poutine":     enabled,
-			"trivy":       {Enabled: true, Severity: append([]string(nil), DefaultTrivySeverities...), IgnoreUnfixed: true},
-			"osv-scanner": enabled,
-			"checkov":     enabled,
+			"gitleaks":       enabled,
+			"semgrep":        {Enabled: true, Rulesets: []string{"p/security-audit", "p/secrets"}},
+			"zizmor":         enabled,
+			"actionlint":     enabled,
+			"poutine":        enabled,
+			"pipeline-check": {Enabled: false}, // Bitbucket Pipelines YAML; enabled on Bitbucket CI
+			"trivy":          {Enabled: true, Severity: append([]string(nil), DefaultTrivySeverities...), IgnoreUnfixed: true},
+			"osv-scanner":    enabled,
+			"checkov":        enabled,
 		},
+	}
+}
+
+// bitbucketDefaultOff lists scanners that target GitHub Actions workflows and
+// are disabled on Bitbucket Pipelines unless explicitly configured.
+var bitbucketDefaultOff = []string{"zizmor", "actionlint", "poutine"}
+
+// ApplyBitbucketScannerDefaults disables GitHub-Actions-oriented scanners and
+// enables pipeline-check when running on Bitbucket, unless muninn.yml listed
+// those scanners under scanners:.
+func ApplyBitbucketScannerDefaults(cfg *Config) {
+	if cfg == nil {
+		return
+	}
+	if cfg.Scanners == nil {
+		cfg.Scanners = make(map[string]ScannerConfig)
+	}
+	for _, name := range bitbucketDefaultOff {
+		if cfg.ConfiguredScanners[name] {
+			continue
+		}
+		sc := cfg.Scanners[name]
+		sc.Enabled = false
+		cfg.Scanners[name] = sc
+	}
+	if !cfg.ConfiguredScanners["pipeline-check"] {
+		sc := cfg.Scanners["pipeline-check"]
+		sc.Enabled = true
+		cfg.Scanners["pipeline-check"] = sc
 	}
 }
 

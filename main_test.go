@@ -161,7 +161,7 @@ func TestWriteSARIF_WithFindings(t *testing.T) {
 // ── scan (orchestrator) ───────────────────────────────────────────────────────
 
 func TestScanOrchestrator_NoScannersAvailable(t *testing.T) {
-	// In the test environment none of the 8 scanner binaries are on PATH, so
+	// In the test environment none of the scanner binaries are on PATH, so
 	// scan() skips them all and writes the output files cleanly.
 	dir := chdirTemp(t)
 	cfg := config.Defaults()
@@ -219,6 +219,44 @@ func TestWriteReport_Comment(t *testing.T) {
 	os.Unsetenv("GITHUB_EVENT_NAME")
 	if err := writeReport(context.Background(), "comment", nil, localSARIFPath, localJSONPath); err != nil {
 		t.Fatalf("writeReport(comment) = %v", err)
+	}
+}
+
+func TestWriteReport_JSONAndSARIF(t *testing.T) {
+	dir := chdirTemp(t)
+	findings := []normalizer.Finding{{
+		ID: "1", Tool: "gitleaks", Severity: normalizer.SeverityLow,
+		Title: "t", File: "a.go", Fingerprint: "fp",
+	}}
+	jsonPath := filepath.Join(dir, "out.json")
+	sarifPath := filepath.Join(dir, "out.sarif")
+	if err := writeReport(context.Background(), "json", findings, sarifPath, jsonPath); err != nil {
+		t.Fatalf("json: %v", err)
+	}
+	if err := writeReport(context.Background(), "sarif", findings, sarifPath, jsonPath); err != nil {
+		t.Fatalf("sarif: %v", err)
+	}
+	if err := writeReport(context.Background(), "unknown", findings, sarifPath, jsonPath); err != nil {
+		t.Fatalf("unknown format should be ignored: %v", err)
+	}
+	for _, p := range []string{jsonPath, sarifPath} {
+		if _, err := os.Stat(p); err != nil {
+			t.Errorf("%s missing: %v", p, err)
+		}
+	}
+}
+
+func TestWriteReport_JSONError(t *testing.T) {
+	err := writeReport(context.Background(), "json", nil, localSARIFPath, "/nope/out.json")
+	if err == nil {
+		t.Fatal("expected json write error")
+	}
+}
+
+func TestWriteReport_SARIFError(t *testing.T) {
+	err := writeReport(context.Background(), "sarif", nil, "/nope/out.sarif", localJSONPath)
+	if err == nil {
+		t.Fatal("expected sarif write error")
 	}
 }
 
@@ -371,6 +409,29 @@ func TestRun_UnknownFlag(t *testing.T) {
 	}
 }
 
+func TestRun_VersionFlag(t *testing.T) {
+	setArgs(t, "--version")
+	if code := run(); code != 0 {
+		t.Errorf("run(--version) = %d, want 0", code)
+	}
+}
+
+func TestRun_FormatFlagOverridesOutput(t *testing.T) {
+	dir := chdirTemp(t)
+	// Empty PATH so host-installed scanners cannot run or hang the test.
+	t.Setenv("PATH", t.TempDir())
+	setArgs(t, "--target", dir, "--output", "sarif", "--format", "json")
+	if code := run(); code != 0 {
+		t.Errorf("run() = %d, want 0", code)
+	}
+	if _, err := os.Stat(localJSONPath); err != nil {
+		t.Errorf("--format json should write %s: %v", localJSONPath, err)
+	}
+	if _, err := os.Stat(localSARIFPath); !os.IsNotExist(err) {
+		t.Errorf("--format should override --output sarif; unexpected SARIF: %v", err)
+	}
+}
+
 func TestRun_WithConfigFlag(t *testing.T) {
 	// Config file doesn't exist; run() falls back to defaults (no error).
 	dir := chdirTemp(t)
@@ -456,8 +517,8 @@ func TestCheckFailOn_SuppressedIgnored(t *testing.T) {
 
 func TestActiveScanners_Count(t *testing.T) {
 	scanners := activeScanners()
-	if len(scanners) != 8 {
-		t.Fatalf("activeScanners() returned %d scanners, want 8", len(scanners))
+	if len(scanners) != 9 {
+		t.Fatalf("activeScanners() returned %d scanners, want 9", len(scanners))
 	}
 	// Every scanner must report a non-empty name.
 	for i, sc := range scanners {

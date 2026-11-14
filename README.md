@@ -11,7 +11,7 @@
 
 Named after Odin's raven of Memory from Norse mythology, Muninn remembers every vulnerability it has ever seen — and reports them all back in one unified format.
 
-Muninn orchestrates eight best-in-class open-source scanners, normalizes their output into a single finding schema, and delivers results as GitHub PR comments, SARIF uploads, and structured JSON — with a single `uses:` line.
+Muninn orchestrates best-in-class open-source scanners, normalizes their output into a single finding schema, and delivers results as GitHub PR comments, SARIF uploads, and structured JSON — with a single `uses:` line.
 
 ---
 
@@ -21,13 +21,31 @@ Add this to any GitHub Actions workflow:
 
 ```yaml
 - name: Muninn Security Scan
-  uses: skaldlab/muninn@v0.3.15
+  uses: skaldlab/muninn@v0.4.0
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
     fail-on: high
 ```
 
-Muninn runs all eight scanners, posts a summary comment on your pull request, uploads SARIF to the GitHub Security tab, and fails the check when findings meet or exceed your `fail-on` threshold.
+Muninn runs the enabled scanners, posts a summary comment on your pull request, uploads SARIF to the GitHub Security tab, and fails the check when findings meet or exceed your `fail-on` threshold.
+
+### Bitbucket Pipelines
+
+On Bitbucket Cloud, use the same image as a `docker://` pipe (see [`examples/bitbucket-pipelines.yml`](examples/bitbucket-pipelines.yml)):
+
+```yaml
+- pipe: docker://ghcr.io/skaldlab/muninn:0.4.0
+  variables:
+    FAIL_ON: high
+    OUTPUT_FORMATS: sarif,json,comment
+    BITBUCKET_ACCESS_TOKEN: $BITBUCKET_ACCESS_TOKEN
+```
+
+Create a [Repository Access Token](https://support.atlassian.com/bitbucket-cloud/docs/create-a-repository-access-token/) with **Pull requests: Write** and **Repository: Read**, then store it as a secured repository variable named `BITBUCKET_ACCESS_TOKEN`.
+
+On pull requests Muninn upserts a summary comment and uploads a [Code Insights](https://support.atlassian.com/bitbucket-cloud/docs/code-insights/) report (Bitbucket’s counterpart to GitHub’s SARIF Security tab). PR comments and Insights require a pull-request pipeline so `BITBUCKET_PR_ID` / `BITBUCKET_COMMIT` are set — branch-only pipelines skip those integrations.
+
+GitHub Actions–oriented scanners (`zizmor`, `actionlint`, `poutine`) default to off on Bitbucket unless you set `enabled: true` for them in `muninn.yml`. **pipeline-check** (Bitbucket Pipelines YAML posture) defaults to on in Bitbucket CI and off elsewhere; set `enabled: false` to disable.
 
 ---
 
@@ -39,6 +57,7 @@ Muninn runs all eight scanners, posts a summary comment on your pull request, up
 | **zizmor** | CI/CD pipeline misconfigurations and injection risks | [woodruffw/zizmor](https://github.com/woodruffw/zizmor) |
 | **actionlint** | GitHub Actions syntax errors and security anti-patterns | [rhysd/actionlint](https://github.com/rhysd/actionlint) |
 | **poutine** | Supply chain risks in CI/CD (unpinned actions, risky patterns) | [boostsecurityio/poutine](https://github.com/boostsecurityio/poutine) |
+| **pipeline-check** | Bitbucket Pipelines YAML security posture (`BB-*` rules) | [dmartinochoa/pipeline-check](https://github.com/dmartinochoa/pipeline-check) |
 | **semgrep** | Application SAST (injection, insecure patterns, secrets in code) | [semgrep.dev](https://semgrep.dev) |
 | **osv-scanner** | Known CVEs in dependencies (Go, npm, pip, and more) | [google/osv-scanner](https://github.com/google/osv-scanner) |
 | **trivy** | Container image and filesystem vulnerabilities | [aquasecurity/trivy](https://github.com/aquasecurity/trivy) |
@@ -92,6 +111,10 @@ scanners:
 
   poutine:
     enabled: true
+
+  # Bitbucket Pipelines YAML (default off; auto-enabled on Bitbucket CI)
+  pipeline-check:
+    enabled: false
 
   semgrep:
     enabled: true
@@ -204,13 +227,13 @@ Muninn is not a replacement for every security program — it is a practical def
 
 ### Docker (recommended)
 
-The official image bundles Muninn and all eight scanner binaries:
+The official image bundles Muninn and all scanner binaries:
 
 ```bash
 docker run --rm \
   -v "$(pwd):/github/workspace" \
   -w /github/workspace \
-  ghcr.io/skaldlab/muninn:0.3.15 \
+  ghcr.io/skaldlab/muninn:0.4.0 \
   --target . \
   --output json,sarif \
   --fail-on high
@@ -221,7 +244,7 @@ docker run --rm \
 Download a release binary from [GitHub Releases](https://github.com/skaldlab/muninn/releases) or install with Go:
 
 ```bash
-go install github.com/skaldlab/muninn@v0.3.15
+go install github.com/skaldlab/muninn@v0.4.0
 ```
 
 Scanner binaries (`gitleaks`, `semgrep`, `checkov`, and the rest) must be on `PATH`. The Docker image includes everything pre-installed.
@@ -236,7 +259,7 @@ Verify the container image:
 cosign verify \
   --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  ghcr.io/skaldlab/muninn:0.3.15
+  ghcr.io/skaldlab/muninn:0.4.0
 ```
 
 Verify release binaries via the signed checksums file (download `checksums.txt` and the Sigstore bundle `checksums.txt.sigstore.json` from the release):
@@ -255,9 +278,9 @@ shasum -a 256 -c checksums.txt
 Inspect the image's SBOM and SLSA provenance attestations (attached by BuildKit):
 
 ```bash
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.3.15 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.4.0 \
   --format '{{ json .SBOM }}'
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.3.15 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.4.0 \
   --format '{{ json .Provenance }}'
 ```
 

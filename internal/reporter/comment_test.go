@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -114,6 +115,49 @@ func TestCommentReporter_TruncatesLongDescription(t *testing.T) {
 	}
 	if strings.Contains(out, strings.Repeat("x", 301)) {
 		t.Error("full 301-char description should not appear in output")
+	}
+}
+
+func TestCommentReporter_SectionOverflow(t *testing.T) {
+	findings := make([]normalizer.Finding, 12)
+	for i := range findings {
+		id := fmt.Sprintf("f%d", i)
+		findings[i] = normalizer.Finding{
+			ID:          id,
+			Tool:        "gitleaks",
+			Severity:    normalizer.SeverityHigh,
+			Title:       "finding",
+			File:        "a.go",
+			Line:        i + 1,
+			Fingerprint: id,
+		}
+	}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "…and 2 more") {
+		t.Errorf("expected overflow note, got:\n%s", out)
+	}
+}
+
+func TestCommentReporter_GenericFindingWithoutLine(t *testing.T) {
+	f := normalizer.Finding{
+		Tool: "checkov", Severity: normalizer.SeverityMedium,
+		Title: "", RuleID: "CKV_1", File: "main.tf", Description: "bad",
+		Fingerprint: "f1",
+	}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, []normalizer.Finding{f}); err != nil {
+		t.Fatalf("Write: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "`main.tf`") {
+		t.Errorf("expected file without line, got:\n%s", out)
+	}
+	if !strings.Contains(out, "CKV_1") {
+		t.Errorf("expected rule id as title fallback, got:\n%s", out)
 	}
 }
 
@@ -341,6 +385,23 @@ func TestCommentReporter_ActionlintKindAsRule(t *testing.T) {
 	}
 	if strings.Contains(out, "**Rule:** ``") {
 		t.Errorf("actionlint comment must not show empty rule:\n%s", out)
+	}
+}
+
+func TestCommentReporter_SanitizeLeadingMarker(t *testing.T) {
+	findings := []normalizer.Finding{{
+		ID: "f1", Tool: "gitleaks", Severity: normalizer.SeverityHigh,
+		Title: "secret", RuleID: "generic-api-key", File: "cfg.env", Line: 1,
+		Fingerprint: "f1",
+		Description: "# Impact\nbad things",
+	}}
+	var buf bytes.Buffer
+	if err := (&Comment{}).Write(context.Background(), &buf, findings); err != nil {
+		t.Fatalf("Write() unexpected error: %v", err)
+	}
+	out := buf.String()
+	if !strings.Contains(out, "\\# Impact bad things") {
+		t.Errorf("leading heading marker should be escaped, got:\n%s", out)
 	}
 }
 
