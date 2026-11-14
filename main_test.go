@@ -418,9 +418,17 @@ func TestRun_VersionFlag(t *testing.T) {
 
 func TestRun_FormatFlagOverridesOutput(t *testing.T) {
 	dir := chdirTemp(t)
+	// Empty PATH so host-installed scanners cannot run or hang the test.
+	t.Setenv("PATH", t.TempDir())
 	setArgs(t, "--target", dir, "--output", "sarif", "--format", "json")
 	if code := run(); code != 0 {
 		t.Errorf("run() = %d, want 0", code)
+	}
+	if _, err := os.Stat(localJSONPath); err != nil {
+		t.Errorf("--format json should write %s: %v", localJSONPath, err)
+	}
+	if _, err := os.Stat(localSARIFPath); !os.IsNotExist(err) {
+		t.Errorf("--format should override --output sarif; unexpected SARIF: %v", err)
 	}
 }
 

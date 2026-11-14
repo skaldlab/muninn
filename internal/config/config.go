@@ -135,9 +135,12 @@ func applyConfigFile(cfg *Config, file configYAML) error {
 		cfg.FailOn = file.FailOn
 	}
 	if file.Scanners != nil {
-		cfg.Scanners = file.Scanners
+		// Merge into Defaults() so omitted scanners (e.g. pipeline-check)
+		// keep their recommended Enabled value instead of disappearing from
+		// the map — runScanner treats a missing key as enabled.
 		cfg.ConfiguredScanners = make(map[string]bool, len(file.Scanners))
-		for name := range file.Scanners {
+		for name, sc := range file.Scanners {
+			cfg.Scanners[name] = sc
 			cfg.ConfiguredScanners[name] = true
 		}
 	}

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/skaldlab/muninn/internal/normalizer"
 )
@@ -15,6 +16,9 @@ const (
 	bitbucketReportTitle = "Muninn Security Scan"
 	bitbucketAnnotBatch  = 100
 	bitbucketAnnotMax    = 1000
+	// bitbucketInsightsTimeout caps Code Insights uploads so a hung API
+	// cannot delay checkFailOn indefinitely.
+	bitbucketInsightsTimeout = 30 * time.Second
 )
 
 // isBitbucketCI reports whether the process is running inside Bitbucket Pipelines.
@@ -25,6 +29,8 @@ func isBitbucketCI() bool {
 // uploadBitbucketInsights creates or updates a Code Insights report for the
 // current commit. Failures are warnings only so the scan exit code is unchanged.
 func uploadBitbucketInsights(ctx context.Context, findings []normalizer.Finding, failOn string) error {
+	ctx, cancel := context.WithTimeout(ctx, bitbucketInsightsTimeout)
+	defer cancel()
 	return uploadBitbucketInsightsHTTP(ctx, findings, failOn, http.DefaultClient)
 }
 

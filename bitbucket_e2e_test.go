@@ -69,9 +69,12 @@ func TestBitbucketPipelineE2E(t *testing.T) {
 
 	dir := chdirTemp(t)
 	writeBitbucketPipelineStub(t, dir)
+	writeMuninnConfigHostScannersOff(t, dir)
 
-	cfg := config.Defaults()
-	cfg.FailOn = "critical" // fixture findings are medium; gate should pass
+	cfg, err := config.Load(filepath.Join(dir, "muninn.yml"))
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
 	if !isBitbucketCI() {
 		t.Fatal("isBitbucketCI() = false, want true with BITBUCKET_COMMIT set")
 	}
@@ -81,10 +84,8 @@ func TestBitbucketPipelineE2E(t *testing.T) {
 		t.Fatal("GitHub Actions scanners should be disabled on Bitbucket")
 	}
 	if !cfg.Scanners["pipeline-check"].Enabled {
-		t.Fatal("pipeline-check should be enabled on Bitbucket")
+		t.Fatal("pipeline-check should be enabled on Bitbucket via defaults")
 	}
-	// Isolate the Bitbucket path from whatever real scanners are on the host PATH.
-	disableAllScannersExcept(cfg, "pipeline-check")
 
 	if err := scan(context.Background(), cfg, dir, "comment,json"); err != nil {
 		t.Fatalf("scan() = %v", err)
@@ -161,7 +162,7 @@ func TestRun_BitbucketCIPath(t *testing.T) {
 
 	dir := chdirTemp(t)
 	writeBitbucketPipelineStub(t, dir)
-	writeMuninnConfigOnlyPipelineCheck(t, dir)
+	writeMuninnConfigHostScannersOff(t, dir)
 	setArgs(t, "--config", filepath.Join(dir, "muninn.yml"), "--target", dir, "--output", "comment,json", "--fail-on", "critical")
 
 	if code := run(); code != 0 {
@@ -184,6 +185,26 @@ func TestRun_BitbucketCIPath(t *testing.T) {
 	}
 	if !sawReport {
 		t.Errorf("run() did not PUT Code Insights report; hits=%v", hits)
+	}
+
+	data, err := os.ReadFile(localJSONPath)
+	if err != nil {
+		t.Fatalf("read muninn.json: %v", err)
+	}
+	var report struct {
+		Findings []normalizer.Finding `json:"findings"`
+	}
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatalf("decode muninn.json: %v", err)
+	}
+	var pcCount int
+	for _, f := range report.Findings {
+		if f.Tool == "pipeline-check" {
+			pcCount++
+		}
+	}
+	if pcCount == 0 {
+		t.Fatalf("run() should auto-enable pipeline-check; got %d pipeline-check findings (%d total)", pcCount, len(report.Findings))
 	}
 }
 
@@ -213,33 +234,18 @@ func addFakePipelineCheckToPath(t *testing.T, fixture []byte, exitCode int) {
 	t.Setenv("PATH", dir+":"+os.Getenv("PATH"))
 }
 
-func disableAllScannersExcept(cfg *config.Config, keep string) {
-	for name, sc := range cfg.Scanners {
-		if name == keep {
-			sc.Enabled = true
-		} else {
-			sc.Enabled = false
-		}
-		cfg.Scanners[name] = sc
-	}
-}
-
-func writeMuninnConfigOnlyPipelineCheck(t *testing.T, dir string) {
+// writeMuninnConfigHostScannersOff disables unrelated scanners so tests stay
+// fast on developer machines. Platform-defaulted keys (pipeline-check and the
+// GitHub Actions scanners) are omitted so ApplyBitbucketScannerDefaults /
+// run() apply those defaults automatically.
+func writeMuninnConfigHostScannersOff(t *testing.T, dir string) {
 	t.Helper()
 	content := []byte(`version: 1
 fail-on: critical
 scanners:
-  pipeline-check:
-    enabled: true
   gitleaks:
     enabled: false
   semgrep:
-    enabled: false
-  zizmor:
-    enabled: false
-  actionlint:
-    enabled: false
-  poutine:
     enabled: false
   trivy:
     enabled: false

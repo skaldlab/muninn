@@ -185,8 +185,16 @@ func doBitbucketJSON(ctx context.Context, client *http.Client, method, url, toke
 
 func truncateAPIError(s string, n int) string {
 	s = strings.TrimSpace(s)
-	if len(s) <= n {
+	if n <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= n {
 		return s
 	}
-	return s[:n] + "…"
+	if n == 1 {
+		return "…"
+	}
+	// Ellipsis counts toward n so callers can enforce hard API limits.
+	return string(runes[:n-1]) + "…"
 }

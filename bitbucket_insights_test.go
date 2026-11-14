@@ -217,6 +217,30 @@ func TestBitbucketAnnotationsFromFindings_CapsAtMax(t *testing.T) {
 	}
 }
 
+func TestBitbucketAnnotationsFromFindings_TruncatesWithinLimits(t *testing.T) {
+	// Bitbucket summary/details limits are enforced via truncateAPIError(450/2000).
+	title := strings.Repeat("タイトル", 200) // multi-byte runes
+	desc := strings.Repeat("詳細", 1200)
+	annots := bitbucketAnnotationsFromFindings([]normalizer.Finding{{
+		Title: title, Description: desc, Severity: normalizer.SeverityHigh, Fingerprint: "lim",
+	}})
+	if len(annots) != 1 {
+		t.Fatalf("len = %d, want 1", len(annots))
+	}
+	if n := len([]rune(annots[0].Summary)); n > 450 {
+		t.Errorf("Summary rune count = %d, want <= 450", n)
+	}
+	if n := len([]rune(annots[0].Details)); n > 2000 {
+		t.Errorf("Details rune count = %d, want <= 2000", n)
+	}
+	if !strings.HasSuffix(annots[0].Summary, "…") {
+		t.Errorf("Summary should end with ellipsis, got %q", annots[0].Summary[len(annots[0].Summary)-3:])
+	}
+	if !strings.HasSuffix(annots[0].Details, "…") {
+		t.Errorf("Details should end with ellipsis")
+	}
+}
+
 func TestUploadBitbucketInsights_AnnotationAPIError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPut {

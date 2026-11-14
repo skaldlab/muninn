@@ -70,5 +70,11 @@
         "CWE-345"
       ]
     }
-  ]
+  ],
+  "scan_status": {
+    "complete": true,
+    "files_scanned": 1,
+    "files_unparsed": 0,
+    "degraded_modules": []
+  }
 }

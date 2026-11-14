@@ -232,8 +232,17 @@ func TestTruncateAPIError(t *testing.T) {
 	}
 	long := strings.Repeat("a", 50)
 	got := truncateAPIError(long, 10)
-	if got != "aaaaaaaaaa…" {
-		t.Errorf("truncate = %q", got)
+	if got != "aaaaaaaaa…" {
+		t.Errorf("truncate = %q, want 9 a's + ellipsis (ellipsis counts toward n)", got)
+	}
+	if got := truncateAPIError("café-extra", 5); got != "café…" {
+		t.Errorf("rune boundary = %q, want café…", got)
+	}
+	if got := truncateAPIError("x", 1); got != "x" {
+		t.Errorf("exact fit = %q", got)
+	}
+	if got := truncateAPIError("xy", 1); got != "…" {
+		t.Errorf("n=1 truncate = %q, want …", got)
 	}
 }
 

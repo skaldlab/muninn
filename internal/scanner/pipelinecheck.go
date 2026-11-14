@@ -18,7 +18,15 @@ import (
 // pipelineCheckReport mirrors the JSON document from
 // `pipeline_check --output json` (schema_version 1.1).
 type pipelineCheckReport struct {
-	Findings []pipelineCheckFinding `json:"findings"`
+	ScanStatus *pipelineCheckScanStatus `json:"scan_status,omitempty"`
+	Findings   []pipelineCheckFinding   `json:"findings"`
+}
+
+// pipelineCheckScanStatus reports whether the scan finished fully.
+// Present since pipeline-check 1.11.0; older reports omit it.
+type pipelineCheckScanStatus struct {
+	Complete bool   `json:"complete"`
+	Reason   string `json:"reason,omitempty"`
 }
 
 // pipelineCheckFinding is one failing check in the JSON report.
@@ -72,14 +80,24 @@ func (p *PipelineCheck) Run(ctx context.Context, target string) ([]normalizer.Fi
 	if err != nil {
 		return nil, err
 	}
+	if doc.ScanStatus != nil && !doc.ScanStatus.Complete {
+		reason := doc.ScanStatus.Reason
+		if reason == "" {
+			reason = "incomplete scan"
+		}
+		return nil, fmt.Errorf("pipeline-check: scan incomplete: %s", reason)
+	}
 	return normalizePipelineCheck(doc, target), nil
 }
 
 func (p *PipelineCheck) execute(ctx context.Context, target string) (*pipelineCheckReport, error) {
+	// --output-file - forces JSON onto stdout even when a project config sets
+	// output_file to a path under the scanned repo.
 	cmd := p.execFunc(ctx, "pipeline_check",
 		"--pipeline", "bitbucket",
 		"--bitbucket-path", target,
 		"--output", "json",
+		"--output-file", "-",
 		"--no-chains",
 	)
 	out, err := cmd.Output()
@@ -94,7 +112,7 @@ func (p *PipelineCheck) execute(ctx context.Context, target string) (*pipelineCh
 
 func parsePipelineCheckJSON(data []byte) (*pipelineCheckReport, error) {
 	if len(data) == 0 {
-		return &pipelineCheckReport{}, nil
+		return nil, fmt.Errorf("pipeline-check: empty report on stdout")
 	}
 	var doc pipelineCheckReport
 	if err := json.Unmarshal(data, &doc); err != nil {

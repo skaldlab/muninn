@@ -126,22 +126,14 @@ func writeIntegrationBitbucketPipeline(t *testing.T, dir string) {
 
 func writeIntegrationMuninnConfig(t *testing.T, dir string) {
 	t.Helper()
-	// Explicit list so ApplyBitbucketScannerDefaults keeps pipeline-check on and
-	// host PATH scanners (gitleaks, checkov, …) do not slow or noise the test.
+	// Disable host scanners. Omit pipeline-check and GitHub Actions scanners so
+	// ApplyBitbucketScannerDefaults (via run()) applies those platform defaults.
 	content := []byte(`version: 1
 fail-on: critical
 scanners:
-  pipeline-check:
-    enabled: true
   gitleaks:
     enabled: false
   semgrep:
-    enabled: false
-  zizmor:
-    enabled: false
-  actionlint:
-    enabled: false
-  poutine:
     enabled: false
   trivy:
     enabled: false

@@ -102,6 +102,39 @@ func TestLoad_UnsupportedVersion(t *testing.T) {
 	}
 }
 
+func TestLoad_OmitsPipelineCheckKeepsDefaultDisabled(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "muninn.yml")
+	content := []byte(`version: 1
+scanners:
+  gitleaks:
+    enabled: false
+`)
+	if err := os.WriteFile(path, content, 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if cfg.ConfiguredScanners["pipeline-check"] {
+		t.Error("pipeline-check was not listed; ConfiguredScanners should be false")
+	}
+	pc, ok := cfg.Scanners["pipeline-check"]
+	if !ok {
+		t.Fatal("pipeline-check missing from merged Scanners map")
+	}
+	if pc.Enabled {
+		t.Error("omitted pipeline-check must stay disabled outside Bitbucket")
+	}
+	if cfg.Scanners["gitleaks"].Enabled {
+		t.Error("explicit gitleaks enabled: false should apply")
+	}
+	if !cfg.Scanners["semgrep"].Enabled {
+		t.Error("omitted semgrep should keep Defaults() enabled")
+	}
+}
+
 func TestParseSuppressions_NilAndEmpty(t *testing.T) {
 	got, err := parseSuppressions(nil)
 	if err != nil || got != nil {

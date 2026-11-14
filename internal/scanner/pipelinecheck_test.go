@@ -208,9 +208,9 @@ func TestPipelineCheckRelPath(t *testing.T) {
 }
 
 func TestParsePipelineCheckJSON_Empty(t *testing.T) {
-	doc, err := parsePipelineCheckJSON(nil)
-	if err != nil || doc == nil {
-		t.Fatalf("empty = (%v, %v)", doc, err)
+	_, err := parsePipelineCheckJSON(nil)
+	if err == nil {
+		t.Fatal("expected error for empty stdout")
 	}
 	findings := normalizePipelineCheck(&pipelineCheckReport{
 		Findings: []pipelineCheckFinding{{CheckID: "BB-001", Passed: true, Title: "ok"}},
@@ -226,8 +226,8 @@ func TestPipelineCheckRun_OutputAndExitStatus(t *testing.T) {
 		name, output, wantError string
 		exitCode, wantCount     int
 	}{
-		{name: "successful empty output"},
-		{name: "findings exit with empty output", exitCode: 1},
+		{name: "successful empty output", wantError: "empty report"},
+		{name: "findings exit with empty output", exitCode: 1, wantError: "empty report"},
 		{name: "clean report", output: `{"findings":[]}`},
 		{name: "findings on successful exit", output: `{"findings":[{"check_id":"BB-001","severity":"high"}]}`, wantCount: 1},
 		{name: "malformed successful output", output: `{broken`, wantError: "parsing JSON"},
@@ -264,7 +264,7 @@ func TestPipelineCheckRun_CommandArguments(t *testing.T) {
 	called := false
 	p := &PipelineCheck{lookPath: lookPathPipelineCheck(), execFunc: func(ctx context.Context, name string, args ...string) *exec.Cmd {
 		called = true
-		want := []string{"--pipeline", "bitbucket", "--bitbucket-path", target, "--output", "json", "--no-chains"}
+		want := []string{"--pipeline", "bitbucket", "--bitbucket-path", target, "--output", "json", "--output-file", "-", "--no-chains"}
 		if name != "pipeline_check" || !reflect.DeepEqual(args, want) {
 			t.Errorf("command = %s %q, want pipeline_check %q", name, args, want)
 		}
@@ -317,5 +317,19 @@ func TestNormalizePipelineCheck_MixedResultsAndStableIdentity(t *testing.T) {
 	input.Resource = "/second/nested/bitbucket-pipelines.yml"
 	if normalizeOnePipelineCheck(input, "/second").Fingerprint == f.Fingerprint {
 		t.Error("different files share an identity")
+	}
+}
+
+func TestPipelineCheckRun_IncompleteScan(t *testing.T) {
+	target := t.TempDir()
+	writePipelineCheckStub(t, target)
+	payload := `{"scan_status":{"complete":false,"reason":"parse failed"},"findings":[]}`
+	p := &PipelineCheck{
+		execFunc: fakePipelineCheckExecFunc(payload, 0),
+		lookPath: lookPathPipelineCheck(),
+	}
+	_, err := p.Run(context.Background(), target)
+	if err == nil || !strings.Contains(err.Error(), "scan incomplete") {
+		t.Fatalf("Run() = %v, want incomplete-scan error", err)
 	}
 }
