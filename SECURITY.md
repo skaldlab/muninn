@@ -20,6 +20,10 @@ a fix within 7 days for critical issues.
 
 | Version | Supported |
 |---------|-----------|
+| 0.5.x   | ✅ |
+| 0.4.x   | ✅ |
+| 0.3.x   | ✅ |
+| 0.2.x   | ✅ |
 | 0.1.x   | ✅ |
 
 ## Scope
@@ -28,7 +32,7 @@ Muninn is a security scanner — we take vulnerabilities in our
 own tooling seriously. In-scope issues include:
 
 - Scanner bypass techniques (making Muninn miss real findings)
-- False negative patterns across any of the 8 scanners
+- False negative patterns across any of the 9 scanners
 - Supply chain attacks against Muninn's own dependencies
 - Remote code execution via malicious scan targets
 - Information disclosure via scan output

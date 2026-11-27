@@ -224,7 +224,7 @@ Each key under `scanners` matches a scanner name. All scanners support `enabled`
 | **Unified findings** | Yes — one schema, one comment | Partial | Partial | No — N different formats |
 | **Setup** | One `uses:` line | Account + integration | Org licensing | Install and wire each tool |
 
-Muninn is not a replacement for every security program — it is a practical default for teams that want broad coverage without stitching together eight separate tools.
+Muninn is not a replacement for every security program — it is a practical default for teams that want broad coverage without stitching together nine separate tools.
 
 ---
 
