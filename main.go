@@ -159,6 +159,7 @@ func activeScanners() []scanner.Scanner {
 		scanner.NewOSVScanner(),
 		scanner.NewTrivy(),
 		scanner.NewCheckov(),
+		scanner.NewSkillSpector(),
 	}
 }
 
@@ -180,7 +181,11 @@ func runScanner(ctx context.Context, sc scanner.Scanner, target string, cfg *con
 	found, err := sc.Run(ctx, target)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "muninn: %s: %v\n", name, err)
-		return nil
+		// Keep any findings produced before the failure so reports and
+		// checkFailOn still see partial results from multi-target scanners.
+		if len(found) == 0 {
+			return nil
+		}
 	}
 	fmt.Printf("muninn: %s: %d finding(s)\n", name, len(found))
 	return found

@@ -1,14 +1,12 @@
-.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums scanner-checksums-check scanner-checksums-write scanners-lock pipeline-check-lock
+.PHONY: test coverage coverage-html fmt lint build check hooks scanner-checksums scanner-checksums-check scanner-checksums-write scanners-lock pipeline-check-lock skillspector-lock
 
 test:
 	go test -race ./...
 
 coverage:
-	go test -race -coverprofile=coverage.out -covermode=atomic ./...
-	go tool cover -func=coverage.out
+	bash .github/scripts/coverage.sh
 
-coverage-html:
-	go test -race -coverprofile=coverage.out -covermode=atomic ./...
+coverage-html: coverage
 	go tool cover -html=coverage.out -o coverage.html
 	open coverage.html
 
@@ -54,3 +52,8 @@ scanners-lock:
 pipeline-check-lock:
 	uv pip compile --universal --generate-hashes --python-version 3.14 \
 		requirements-pipeline-check.in -o requirements-pipeline-check.txt
+
+# Isolated lockfile for SkillSpector (Python 3.13 for yara-python wheels).
+skillspector-lock:
+	uv pip compile --universal --generate-hashes --python-version 3.13 \
+		requirements-skillspector.in -o requirements-skillspector.txt

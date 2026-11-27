@@ -405,6 +405,34 @@ func TestCommentReporter_SanitizeLeadingMarker(t *testing.T) {
 	}
 }
 
+func TestCommentReporter_GenericFindingPropagatesWriteErrors(t *testing.T) {
+	f := normalizer.Finding{
+		ID: "f1", Tool: "semgrep", Severity: normalizer.SeverityHigh,
+		Title: "SQLi", RuleID: "rules.sql", File: "app.go", Line: 9,
+		Fingerprint: "f1", Description: "unsafe query",
+	}
+	var counter writeCounter
+	if err := (&Comment{}).Write(context.Background(), &counter, []normalizer.Finding{f}); err != nil {
+		t.Fatalf("baseline Write() = %v", err)
+	}
+	if counter.n == 0 {
+		t.Fatal("expected at least one write during render")
+	}
+	for ok := 0; ok < counter.n; ok++ {
+		w := &countingErrWriter{ok: ok}
+		if err := (&Comment{}).Write(context.Background(), w, []normalizer.Finding{f}); err == nil {
+			t.Errorf("ok=%d: expected write error", ok)
+		}
+	}
+}
+
+type writeCounter struct{ n int }
+
+func (w *writeCounter) Write(p []byte) (int, error) {
+	w.n++
+	return len(p), nil
+}
+
 func TestCommentReporter_GenericFindingSkeleton(t *testing.T) {
 	findings := []normalizer.Finding{{
 		ID: "f1", Tool: "zizmor", Severity: normalizer.SeverityCritical,

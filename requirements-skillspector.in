@@ -1,0 +1,7 @@
+# Isolated install for SkillSpector. Kept separate from requirements-scanners.in
+# because SkillSpector needs Python 3.12/3.13 for prebuilt yara-python wheels
+# (Muninn's main image is Python 3.14) and brings a LangChain/YARA stack that
+# would conflict with semgrep/checkov. The Docker image installs this into its
+# own Python 3.13 venv.
+# Compile: make skillspector-lock
+skillspector==2.13.7

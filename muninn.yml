@@ -22,12 +22,21 @@ scanners:
     ignore-unfixed: true
   checkov:
     enabled: true
+  skillspector:
+    enabled: true
 
 suppressions:
   - id: testdata
     reason: >
       Intentional test fixtures (scanner sample output and integration repos).
       All secrets are fake and all vulnerabilities are deliberate.
+    expires: ""
+
+  - tool: osv-scanner
+    rule-id: MAL-2026-6561
+    reason: >
+      skillspector on PyPI is the official NVIDIA SkillSpector release pinned in
+      requirements-skillspector.in; Inspector MAL IDs are false positives here.
     expires: ""
 
   - tool: zizmor

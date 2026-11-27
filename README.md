@@ -21,7 +21,7 @@ Add this to any GitHub Actions workflow:
 
 ```yaml
 - name: Muninn Security Scan
-  uses: skaldlab/muninn@v0.4.0
+  uses: skaldlab/muninn@v0.5.0
   with:
     token: ${{ secrets.GITHUB_TOKEN }}
     fail-on: high
@@ -34,7 +34,7 @@ Muninn runs the enabled scanners, posts a summary comment on your pull request, 
 On Bitbucket Cloud, use the same image as a `docker://` pipe (see [`examples/bitbucket-pipelines.yml`](examples/bitbucket-pipelines.yml)):
 
 ```yaml
-- pipe: docker://ghcr.io/skaldlab/muninn:0.4.0
+- pipe: docker://ghcr.io/skaldlab/muninn:0.5.0
   variables:
     FAIL_ON: high
     OUTPUT_FORMATS: sarif,json,comment
@@ -62,6 +62,7 @@ GitHub Actions–oriented scanners (`zizmor`, `actionlint`, `poutine`) default t
 | **osv-scanner** | Known CVEs in dependencies (Go, npm, pip, and more) | [google/osv-scanner](https://github.com/google/osv-scanner) |
 | **trivy** | Container image and filesystem vulnerabilities | [aquasecurity/trivy](https://github.com/aquasecurity/trivy) |
 | **checkov** | Infrastructure-as-Code misconfigurations (Terraform, K8s, Docker) | [bridgecrewio/checkov](https://github.com/bridgecrewio/checkov) |
+| **skillspector** | AI agent skill risks (prompt injection, exfiltration, MCP poisoning) | [NVIDIA/SkillSpector](https://github.com/NVIDIA/SkillSpector) |
 
 ### Cross-scanner deduplication
 
@@ -137,6 +138,10 @@ scanners:
   checkov:
     enabled: true
     skip-checks: []
+
+  # AI agent skills (SKILL.md / .claude/skills / .agents/skills / .cursor/skills)
+  skillspector:
+    enabled: true
 
 # Suppress specific findings. Every entry must include a reason.
 suppressions:
@@ -233,7 +238,7 @@ The official image bundles Muninn and all scanner binaries:
 docker run --rm \
   -v "$(pwd):/github/workspace" \
   -w /github/workspace \
-  ghcr.io/skaldlab/muninn:0.4.0 \
+  ghcr.io/skaldlab/muninn:0.5.0 \
   --target . \
   --output json,sarif \
   --fail-on high
@@ -244,7 +249,7 @@ docker run --rm \
 Download a release binary from [GitHub Releases](https://github.com/skaldlab/muninn/releases) or install with Go:
 
 ```bash
-go install github.com/skaldlab/muninn@v0.4.0
+go install github.com/skaldlab/muninn@v0.5.0
 ```
 
 Scanner binaries (`gitleaks`, `semgrep`, `checkov`, and the rest) must be on `PATH`. The Docker image includes everything pre-installed.
@@ -259,7 +264,7 @@ Verify the container image:
 cosign verify \
   --certificate-identity-regexp '^https://github.com/skaldlab/muninn/\.github/workflows/release\.yml@' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  ghcr.io/skaldlab/muninn:0.4.0
+  ghcr.io/skaldlab/muninn:0.5.0
 ```
 
 Verify release binaries via the signed checksums file (download `checksums.txt` and the Sigstore bundle `checksums.txt.sigstore.json` from the release):
@@ -278,9 +283,9 @@ shasum -a 256 -c checksums.txt
 Inspect the image's SBOM and SLSA provenance attestations (attached by BuildKit):
 
 ```bash
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.4.0 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.5.0 \
   --format '{{ json .SBOM }}'
-docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.4.0 \
+docker buildx imagetools inspect ghcr.io/skaldlab/muninn:0.5.0 \
   --format '{{ json .Provenance }}'
 ```
 

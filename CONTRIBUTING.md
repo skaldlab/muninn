@@ -11,8 +11,8 @@ Muninn is built by Skald Lab and welcomes contributions.
 
 ## Running tests
 make test                                     # unit tests
-go test -tags integration ./integration/...   # integration tests
-make coverage                                 # coverage report
+go test -tags integration ./integration/...   # integration tests (needs scanner binaries)
+make coverage                                 # unit + integration coverage (96% gate)
 
 ### Bitbucket coverage
 
@@ -30,7 +30,7 @@ is the live check.
 - One scanner or feature per PR
 - Squash merge only
 - Conventional commit titles
-- All CI checks must pass including 95% coverage
+- All CI checks must pass including 96% coverage (unit + integration)
 
 ## Contact
 hello@skaldlab.dev

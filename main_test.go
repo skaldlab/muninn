@@ -517,8 +517,8 @@ func TestCheckFailOn_SuppressedIgnored(t *testing.T) {
 
 func TestActiveScanners_Count(t *testing.T) {
 	scanners := activeScanners()
-	if len(scanners) != 9 {
-		t.Fatalf("activeScanners() returned %d scanners, want 9", len(scanners))
+	if len(scanners) != 10 {
+		t.Fatalf("activeScanners() returned %d scanners, want 10", len(scanners))
 	}
 	// Every scanner must report a non-empty name.
 	for i, sc := range scanners {
@@ -552,6 +552,26 @@ func TestRunScanner_EnabledRuns(t *testing.T) {
 	got := runScanner(context.Background(), scanner.NewPoutine(), t.TempDir(), cfg)
 	if got != nil && len(got) != 0 {
 		t.Errorf("runScanner = %v, want empty", got)
+	}
+}
+
+type partialFailScanner struct{}
+
+func (partialFailScanner) Name() string                   { return "partial-fail" }
+func (partialFailScanner) IsAvailable() bool              { return true }
+func (partialFailScanner) Configure(config.ScannerConfig) {}
+func (partialFailScanner) Run(context.Context, string) ([]normalizer.Finding, error) {
+	return []normalizer.Finding{{
+		Tool: "partial-fail", RuleID: "R1", Severity: normalizer.SeverityHigh, Fingerprint: "fp",
+	}}, fmt.Errorf("boom")
+}
+
+func TestRunScanner_KeepsPartialFindingsOnError(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Scanners["partial-fail"] = config.ScannerConfig{Enabled: true}
+	got := runScanner(context.Background(), partialFailScanner{}, t.TempDir(), cfg)
+	if len(got) != 1 || got[0].RuleID != "R1" {
+		t.Fatalf("runScanner = %+v, want partial R1 finding", got)
 	}
 }
 

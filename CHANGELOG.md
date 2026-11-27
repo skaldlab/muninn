@@ -4,6 +4,23 @@
 
 ### Changed
 
+- CI coverage gate is 96% and merges unit tests with integration runs
+  (instrumented `muninn` binary via `GOCOVERDIR`).
+
+## [0.5.0] - 2026-11-27
+
+### Added
+
+- `skillspector` scanner (`skillspector==2.13.7`) for AI agent skill security
+  (prompt injection, data exfiltration, MCP tool poisoning, and related
+  patterns). Defaults to on; no-ops when the checkout has no skill roots
+  (`SKILL.md`, `.claude/skills`, `.agents/skills`, `.cursor/skills`, `skills/`).
+  Runs static analysis only (`--no-llm`). Installed in an isolated Python 3.13
+  Docker venv because `yara-python` has no cp314 wheels.
+
+### Changed
+
+- Scanner bumps: osv-scanner `2.7.1`, semgrep `1.187.0`, zizmor `1.33.1`.
 - checkov remains pinned at `3.2.531`: `3.2.532+` and `3.3.x`/`3.4.x`
   reintroduce transitive `ecdsa` (`>=0.19.0,<1.0.0`), currently affected by
   `PYSEC-2026-1325` / `CVE-2024-23342` with no fixed release yet.

@@ -198,6 +198,7 @@ func Defaults() *Config {
 			"trivy":          {Enabled: true, Severity: append([]string(nil), DefaultTrivySeverities...), IgnoreUnfixed: true},
 			"osv-scanner":    enabled,
 			"checkov":        enabled,
+			"skillspector":   enabled, // AI agent skills; no-op when none are present
 		},
 	}
 }

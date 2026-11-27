@@ -41,6 +41,14 @@ import (
 // When MUNINN_FAKE_CHECKOV=1 the process is being re-invoked as a fake checkov
 // binary: it writes MUNINN_FAKE_STDOUT to stdout and exits with MUNINN_FAKE_EXIT.
 //
+// When MUNINN_FAKE_PIPELINE_CHECK=1 the process is being re-invoked as a fake
+// pipeline_check binary: it writes MUNINN_FAKE_STDOUT to stdout and exits with
+// MUNINN_FAKE_EXIT.
+//
+// When MUNINN_FAKE_SKILLSPECTOR=1 the process is being re-invoked as a fake
+// skillspector binary: it writes MUNINN_FAKE_STDOUT to stdout and exits with
+// MUNINN_FAKE_EXIT.
+//
 // Future scanner test files in this package must NOT define their own TestMain;
 // add a new MUNINN_FAKE_<SCANNER>=1 branch here instead.
 func TestMain(m *testing.M) {
@@ -78,6 +86,10 @@ func TestMain(m *testing.M) {
 	}
 	if os.Getenv("MUNINN_FAKE_PIPELINE_CHECK") == "1" {
 		runFakePipelineCheck()
+		return
+	}
+	if os.Getenv("MUNINN_FAKE_SKILLSPECTOR") == "1" {
+		runFakeSkillSpector()
 		return
 	}
 	os.Exit(m.Run())

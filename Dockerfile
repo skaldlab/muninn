@@ -5,9 +5,11 @@
 # Libc strategy: the final image is Debian-based (glibc) rather than Alpine
 # (musl).  This is deliberate — semgrep, checkov, and zizmor are installed via
 # pip and ship compiled, glibc-linked components (semgrep-core, zizmor's Rust
-# binary) that do not run on musl.  The remaining scanners (gitleaks, actionlint,
-# poutine, osv-scanner, trivy) are static Go binaries that run on any libc, so we
-# download them in a lightweight Alpine stage and copy them in.
+# binary) that do not run on musl.  SkillSpector is installed in an isolated
+# Python 3.13 venv (yara-python has no cp314 wheels).  The remaining scanners
+# (gitleaks, actionlint, poutine, osv-scanner, trivy) are static Go binaries
+# that run on any libc, so we download them in a lightweight Alpine stage and
+# copy them in.
 #
 # Supply chain (see issue #30): every scanner is pinned to an exact version and
 # each downloaded binary is verified against a hardcoded SHA256 before use, so a
@@ -29,7 +31,7 @@ ARG ACTIONLINT_VERSION=1.7.12
 # renovate: datasource=github-releases depName=boostsecurityio/poutine
 ARG POUTINE_VERSION=1.1.6
 # renovate: datasource=github-releases depName=google/osv-scanner
-ARG OSV_SCANNER_VERSION=2.7.0
+ARG OSV_SCANNER_VERSION=2.7.1
 # renovate: datasource=github-releases depName=aquasecurity/trivy
 ARG TRIVY_VERSION=0.76.2
 
@@ -94,8 +96,8 @@ RUN <<'EOF'
 set -eu
 arch="${TARGETARCH:-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')}"
 case "$arch" in
-  amd64) asset="osv-scanner_linux_amd64"; sha="160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b" ;;
-  arm64) asset="osv-scanner_linux_arm64"; sha="4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7" ;;
+  amd64) asset="osv-scanner_linux_amd64"; sha="fb7dab19a8bd9bbe5c3189f09d4b7ee1820c9553a23bac202648a56efd2f6ee8" ;;
+  arm64) asset="osv-scanner_linux_arm64"; sha="983d22fbad9724514e3fcc6acc83b5fa64c5ffa6b0d9f510028f22c1b223ff81" ;;
   *) echo "unsupported architecture: $arch" >&2; exit 1 ;;
 esac
 curl -fsSL -o /usr/local/bin/osv-scanner "https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/${asset}"
@@ -119,6 +121,20 @@ tar -xzf /tmp/trivy.tgz -C /usr/local/bin trivy
 chmod +x /usr/local/bin/trivy
 rm /tmp/trivy.tgz
 EOF
+
+# ── skillspector: isolated Python 3.13 venv (yara-python has no 3.14 wheels) ─
+# python -m venv --copies is required: a symlink venv's bin/python points at
+# /usr/local/bin/python3.13, and after COPY into the 3.14 final image Python
+# realpath-resolves the interpreter and misses /opt/skillspector/pyvenv.cfg,
+# producing "No module named 'skillspector'". (uv venv has no --copies flag.)
+FROM python:3.13-slim-bookworm AS skillspector
+COPY requirements-skillspector.txt /tmp/requirements-skillspector.txt
+RUN pip install --no-cache-dir uv && \
+    python3 -m venv --copies /opt/skillspector && \
+    uv pip install --python /opt/skillspector/bin/python --no-cache --require-hashes \
+      -r /tmp/requirements-skillspector.txt && \
+    rm /tmp/requirements-skillspector.txt && \
+    /opt/skillspector/bin/skillspector --version
 
 # ── builder: compile Muninn (static, runs on any libc) ───────────────────────
 FROM golang:1.27.3-alpine AS builder
@@ -163,6 +179,21 @@ RUN uv venv /opt/pipeline-check && \
     ln -s /opt/pipeline-check/bin/pipeline_check /usr/local/bin/pipeline_check && \
     rm /tmp/requirements-pipeline-check.txt && \
     pipeline_check --version
+
+# SkillSpector needs Python 3.13 for prebuilt yara-python wheels. Copy the
+# copied-interpreter venv (under /opt/skillspector/bin) plus the 3.13 shared
+# library and stdlib that pyvenv.cfg home=/usr/local still references.
+COPY --from=skillspector /opt/skillspector /opt/skillspector
+COPY --from=skillspector /usr/local/lib/libpython3.13.so.1.0 /usr/local/lib/libpython3.13.so.1.0
+COPY --from=skillspector /usr/local/lib/python3.13 /usr/local/lib/python3.13
+RUN ldconfig \
+    && ln -sf libpython3.13.so.1.0 /usr/local/lib/libpython3.13.so \
+    && printf '%s\n' \
+         '#!/bin/sh' \
+         'exec /opt/skillspector/bin/python /opt/skillspector/bin/skillspector "$@"' \
+         > /usr/local/bin/skillspector \
+    && chmod +x /usr/local/bin/skillspector \
+    && skillspector --version
 
 # Static Go scanner binaries
 COPY --from=tools /usr/local/bin/gitleaks    /usr/local/bin/gitleaks
