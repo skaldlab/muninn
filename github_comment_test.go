@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/skaldlab/muninn/internal/normalizer"
+	"github.com/skaldlab/muninn/internal/reporter"
 )
 
 func TestPostPRComment_NotPR(t *testing.T) {
@@ -256,5 +259,38 @@ func TestRenderComment(t *testing.T) {
 	}
 	if !strings.Contains(body, "No security issues found") {
 		t.Errorf("comment body = %q, want empty-scan message", body)
+	}
+	findings := []normalizer.Finding{{
+		ID: "x", Tool: "gitleaks", Severity: normalizer.SeverityCritical,
+		Title: "leak", RuleID: "aws", File: "x.env", Line: 1, Fingerprint: "x",
+	}}
+	body, err = renderComment(context.Background(), findings)
+	if err != nil {
+		t.Fatalf("renderComment(findings) = %v", err)
+	}
+	if !strings.Contains(body, "leak") || !strings.Contains(body, reporter.CommentMarker) {
+		t.Errorf("comment body = %q", body)
+	}
+}
+
+func TestPostPRCommentHTTP_ListCommentsError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte("nope"))
+	}))
+	defer srv.Close()
+
+	t.Setenv("GITHUB_EVENT_NAME", "pull_request")
+	t.Setenv("GITHUB_TOKEN", "token")
+	t.Setenv("GITHUB_REPOSITORY", "skaldlab/muninn")
+	t.Setenv("GITHUB_API_URL", srv.URL)
+	eventFile := filepath.Join(t.TempDir(), "event.json")
+	if err := os.WriteFile(eventFile, []byte(`{"pull_request":{"number":3}}`), 0644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+	t.Setenv("GITHUB_EVENT_PATH", eventFile)
+
+	if err := postPRCommentHTTP(context.Background(), "hi", srv.Client()); err != nil {
+		t.Fatalf("postPRCommentHTTP() = %v, want nil (warning only)", err)
 	}
 }

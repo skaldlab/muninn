@@ -405,6 +405,20 @@ func TestCommentReporter_SanitizeLeadingMarker(t *testing.T) {
 	}
 }
 
+func TestCommentReporter_GenericFindingPropagatesWriteErrors(t *testing.T) {
+	f := normalizer.Finding{
+		ID: "f1", Tool: "semgrep", Severity: normalizer.SeverityHigh,
+		Title: "SQLi", RuleID: "rules.sql", File: "app.go", Line: 9,
+		Fingerprint: "f1", Description: "unsafe query",
+	}
+	for ok := 0; ok < 12; ok++ {
+		w := &countingErrWriter{ok: ok}
+		if err := (&Comment{}).Write(context.Background(), w, []normalizer.Finding{f}); err == nil {
+			t.Errorf("ok=%d: expected write error", ok)
+		}
+	}
+}
+
 func TestCommentReporter_GenericFindingSkeleton(t *testing.T) {
 	findings := []normalizer.Finding{{
 		ID: "f1", Tool: "zizmor", Severity: normalizer.SeverityCritical,

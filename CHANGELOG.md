@@ -4,6 +4,9 @@
 
 ### Changed
 
+- CI coverage gate is 96% and merges unit tests with integration runs
+  (instrumented `muninn` binary via `GOCOVERDIR`).
+
 ## [0.5.0] - 2026-11-27
 
 ### Added

@@ -131,6 +131,9 @@ func TestSkillSpectorRun_WithFindings(t *testing.T) {
 	if f0.Fingerprint == "" {
 		t.Error("Fingerprint empty")
 	}
+	if f0.Metadata["finding_id"] != "finding-e2-occurrence-1" {
+		t.Errorf("Metadata finding_id = %v", f0.Metadata)
+	}
 }
 
 func TestSkillSpectorRun_NoSkills(t *testing.T) {
@@ -214,7 +217,8 @@ func TestNormalizeSkillSpector_RecursiveSkills(t *testing.T) {
 		Skills: []skillSpectorReport{{
 			Skill: &skillSpectorMeta{Name: "demo", Source: "demo"},
 			Issues: []skillSpectorIssue{{
-				FindingID:   "P1",
+				ID:          "P1",
+				FindingID:   "finding-p1",
 				Pattern:     "Instruction Override",
 				Severity:    "HIGH",
 				Location:    skillSpectorLocation{File: "SKILL.md", StartLine: 3},
@@ -235,7 +239,8 @@ func TestNormalizeSkillSpector_RootManifestKeepsRelPath(t *testing.T) {
 	doc := &skillSpectorReport{
 		Skill: &skillSpectorMeta{Name: "root", Source: "."},
 		Issues: []skillSpectorIssue{{
-			FindingID: "E2",
+			ID:        "E2",
+			FindingID: "finding-e2",
 			Severity:  "HIGH",
 			Location:  skillSpectorLocation{File: "scripts/sync.py", StartLine: 1},
 		}},
@@ -258,7 +263,7 @@ func TestSkillSpectorRun_PreservesFindingsOnLaterJobError(t *testing.T) {
 		execFunc: func(ctx context.Context, name string, args ...string) *exec.Cmd {
 			calls++
 			if calls == 1 {
-				payload := `{"issues":[{"finding_id":"E2","severity":"high","location":{"file":"a.py","start_line":1}}]}`
+				payload := `{"issues":[{"id":"E2","finding_id":"f1","severity":"high","location":{"file":"a.py","start_line":1}}]}`
 				return fakeSkillSpectorExecFunc(payload, 0)(ctx, name, args...)
 			}
 			return fakeSkillSpectorExecFunc(`{"issues":[]}`, 2)(ctx, name, args...)
@@ -296,7 +301,7 @@ func TestSkillSpectorRun_OutputAndExitStatus(t *testing.T) {
 		{name: "successful empty output", wantError: "empty report"},
 		{name: "findings exit with empty output", exitCode: 1, wantError: "empty report"},
 		{name: "clean report", output: `{"issues":[]}`},
-		{name: "findings on successful exit", output: `{"issues":[{"finding_id":"E2","severity":"high","location":{"file":"a.py","start_line":1}}]}`, wantCount: 1},
+		{name: "findings on successful exit", output: `{"issues":[{"id":"E2","severity":"high","location":{"file":"a.py","start_line":1}}]}`, wantCount: 1},
 		{name: "malformed successful output", output: `{broken`, wantError: "parsing JSON"},
 		{name: "malformed findings output", output: `{broken`, exitCode: 1, wantError: "parsing JSON"},
 		{name: "scanner failure with valid JSON", output: `{"issues":[]}`, exitCode: 2, wantError: "running scanner"},
@@ -370,7 +375,8 @@ func TestSkillSpectorRun_RootManifest(t *testing.T) {
 
 func TestNormalizeOneSkillSpector_StableIdentity(t *testing.T) {
 	issue := skillSpectorIssue{
-		FindingID:   "E2",
+		ID:          "E2",
+		FindingID:   "finding-e2",
 		Pattern:     "Env Variable Harvesting",
 		Severity:    "hIgH",
 		Location:    skillSpectorLocation{File: "scripts/sync.py", StartLine: 23},
@@ -400,15 +406,138 @@ func TestNormalizeOneSkillSpector_StableIdentity(t *testing.T) {
 	if normalizeOneSkillSpector(moved, "/repo", base).Fingerprint != f.Fingerprint {
 		t.Error("wording changed finding identity")
 	}
-	moved.FindingID = "E1"
+	moved.ID = "E1"
 	if normalizeOneSkillSpector(moved, "/repo", base).Fingerprint == f.Fingerprint {
 		t.Error("different rules share an identity")
 	}
-	issue.FindingID = ""
-	issue.ID = "fallback-id"
+	occurrenceOnly := issue
+	occurrenceOnly.FindingID = "other-occurrence"
+	occurrenceOnly.ID = "E2"
+	if normalizeOneSkillSpector(occurrenceOnly, "/repo", base).Fingerprint != f.Fingerprint {
+		t.Error("occurrence id changed rule fingerprint")
+	}
+	issue.ID = ""
+	issue.FindingID = "fallback-id"
 	issue.Pattern = ""
 	fb := normalizeOneSkillSpector(issue, "/repo", base)
 	if fb.RuleID != "fallback-id" || fb.Title != "fallback-id" {
 		t.Errorf("fallback identity = %+v", fb)
+	}
+}
+
+func TestSkillSpectorResolveSource(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		target, job, source, want string
+	}{
+		{"/repo", "/repo/.claude/skills", "/abs/path", "/abs/path"},
+		{"/repo", "/repo/job", ".", "/repo/job"},
+		{"/repo", "/repo/job", "child", "/repo/job/child"},
+		{"/repo", "/repo/job", "skills/demo", "/repo/skills/demo"},
+	}
+	for _, tc := range cases {
+		got := skillSpectorResolveSource(tc.target, tc.job, tc.source)
+		if got != tc.want {
+			t.Errorf("resolve(%q) = %q, want %q", tc.source, got, tc.want)
+		}
+	}
+}
+
+func TestSkillSpectorRelFile(t *testing.T) {
+	t.Parallel()
+	if got := skillSpectorRelFile("/repo", "/repo/skill", ""); got != "" {
+		t.Errorf("empty = %q", got)
+	}
+	if got := skillSpectorRelFile("/repo", "/repo/skill", "scripts/a.py"); got != "skill/scripts/a.py" {
+		t.Errorf("rel = %q", got)
+	}
+	if got := skillSpectorRelFile("/repo", "/repo/skill", "/outside/x.py"); got != "/outside/x.py" {
+		t.Errorf("abs outside = %q", got)
+	}
+	if got := skillSpectorRelFile("/repo", "/repo/skill", "../../etc/passwd"); got == "etc/passwd" {
+		t.Errorf("escape should not relativize: %q", got)
+	}
+}
+
+func TestSkillSpectorDescription(t *testing.T) {
+	t.Parallel()
+	got := skillSpectorDescription(skillSpectorIssue{Finding: "snippet", Remediation: "fix"})
+	if !strings.Contains(got, "snippet") || !strings.Contains(got, "Remediation: fix") {
+		t.Errorf("description = %q", got)
+	}
+	if skillSpectorDescription(skillSpectorIssue{}) != "" {
+		t.Error("expected empty description")
+	}
+}
+
+func TestSkillSpectorScanJobs_DiscoveryError(t *testing.T) {
+	target := t.TempDir()
+	blocked := filepath.Join(target, "SKILL.md")
+	if err := os.WriteFile(blocked, []byte("x"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(target, 0000); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(target, 0755) })
+	_, err := skillSpectorScanJobs(target)
+	if err == nil {
+		t.Fatal("expected discovery error")
+	}
+}
+
+func TestSkillSpectorScanJobs_EmptyCollection(t *testing.T) {
+	target := t.TempDir()
+	dir := filepath.Join(target, "skills")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	jobs, err := skillSpectorScanJobs(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(jobs) != 0 {
+		t.Fatalf("jobs = %+v, want none", jobs)
+	}
+}
+
+func TestSkillSpectorExecute_ContextCancel(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	s := &SkillSpector{
+		lookPath: lookPathSkillSpector(),
+		execFunc: fakeSkillSpectorSleepExecFunc(),
+	}
+	_, err := s.execute(ctx, skillSpectorJob{path: ".", recursive: false})
+	if err == nil || !strings.Contains(err.Error(), "context") {
+		t.Fatalf("execute = %v", err)
+	}
+}
+
+func TestSkillSpectorExecute_ExitCodeOne(t *testing.T) {
+	s := &SkillSpector{
+		lookPath: lookPathSkillSpector(),
+		execFunc: fakeSkillSpectorExecFunc(`{"issues":[{"id":"E2","severity":"high","location":{"file":"a.py","start_line":2}}]}`, 1),
+	}
+	doc, err := s.execute(context.Background(), skillSpectorJob{path: ".", recursive: false})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(doc.Issues) != 1 {
+		t.Fatalf("issues = %+v", doc.Issues)
+	}
+}
+
+func TestSkillSpectorNormalizeNestedSourcePath(t *testing.T) {
+	doc := &skillSpectorReport{
+		Skill: &skillSpectorMeta{Source: "./.claude/skills/suspicious-sync/"},
+		Issues: []skillSpectorIssue{{
+			ID:       "E2",
+			Location: skillSpectorLocation{File: "scripts/sync.py", StartLine: 5},
+		}},
+	}
+	got := normalizeSkillSpector(doc, "/repo", "/repo")
+	if len(got) != 1 || got[0].File != ".claude/skills/suspicious-sync/scripts/sync.py" {
+		t.Fatalf("got = %+v", got)
 	}
 }

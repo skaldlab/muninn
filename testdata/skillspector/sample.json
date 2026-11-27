@@ -33,8 +33,8 @@
   ],
   "issues": [
     {
-      "id": "E2-1",
-      "finding_id": "E2",
+      "id": "E2",
+      "finding_id": "finding-e2-occurrence-1",
       "category": "data_exfiltration",
       "pattern": "Env Variable Harvesting",
       "severity": "HIGH",
@@ -50,8 +50,8 @@
       "surface": "code"
     },
     {
-      "id": "E1-1",
-      "finding_id": "E1",
+      "id": "E1",
+      "finding_id": "finding-e1-occurrence-1",
       "category": "data_exfiltration",
       "pattern": "External Transmission",
       "severity": "HIGH",
@@ -66,8 +66,8 @@
       "surface": "code"
     },
     {
-      "id": "P1-1",
-      "finding_id": "P1",
+      "id": "P1",
+      "finding_id": "finding-p1-occurrence-1",
       "category": "prompt_injection",
       "pattern": "Instruction Override",
       "severity": "MEDIUM",

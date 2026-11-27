@@ -8,7 +8,7 @@ import (
 
 func TestConfigure_NoOpScanners(t *testing.T) {
 	cfg := config.ScannerConfig{Enabled: true}
-	// Cover empty Configure methods so they count toward the 95% gate.
+	// Cover empty Configure methods so they count toward the coverage gate.
 	NewGitleaks().Configure(cfg)
 	NewZizmor().Configure(cfg)
 	NewActionlint().Configure(cfg)

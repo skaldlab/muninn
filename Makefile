@@ -4,11 +4,9 @@ test:
 	go test -race ./...
 
 coverage:
-	go test -race -coverprofile=coverage.out -covermode=atomic ./...
-	go tool cover -func=coverage.out
+	bash .github/scripts/coverage.sh
 
-coverage-html:
-	go test -race -coverprofile=coverage.out -covermode=atomic ./...
+coverage-html: coverage
 	go tool cover -html=coverage.out -o coverage.html
 	open coverage.html
 

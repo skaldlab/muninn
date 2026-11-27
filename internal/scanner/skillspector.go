@@ -258,9 +258,10 @@ func skillSpectorRelFile(target, base, file string) string {
 }
 
 func normalizeOneSkillSpector(issue skillSpectorIssue, target, base string) normalizer.Finding {
-	ruleID := issue.FindingID
+	// Upstream JSON sets id=rule_id and finding_id=per-occurrence identity (see Finding.to_dict).
+	ruleID := issue.ID
 	if ruleID == "" {
-		ruleID = issue.ID
+		ruleID = issue.FindingID
 	}
 	file := skillSpectorRelFile(target, base, issue.Location.File)
 	title := issue.Pattern
@@ -279,12 +280,12 @@ func normalizeOneSkillSpector(issue skillSpectorIssue, target, base string) norm
 		RuleID:      ruleID,
 		RuleURL:     "https://github.com/NVIDIA/SkillSpector",
 		Fingerprint: fp,
-		Metadata:    skillSpectorMetadata(issue),
+		Metadata:    skillSpectorMetadata(issue, ruleID),
 	}
 	return f
 }
 
-func skillSpectorMetadata(issue skillSpectorIssue) map[string]any {
+func skillSpectorMetadata(issue skillSpectorIssue, ruleID string) map[string]any {
 	meta := map[string]any{}
 	if issue.Category != "" {
 		meta["category"] = issue.Category
@@ -294,6 +295,9 @@ func skillSpectorMetadata(issue skillSpectorIssue) map[string]any {
 	}
 	if issue.Confidence > 0 {
 		meta["confidence"] = issue.Confidence
+	}
+	if issue.FindingID != "" && issue.FindingID != ruleID {
+		meta["finding_id"] = issue.FindingID
 	}
 	if len(meta) == 0 {
 		return nil

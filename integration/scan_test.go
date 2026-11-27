@@ -39,6 +39,17 @@ var requiredScanners = []string{
 }
 
 func TestMain(m *testing.M) {
+	if dir := os.Getenv("MUNINN_INTEGRATION_GOCOVERDIR"); dir != "" {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "integration: coverage dir: %v\n", err)
+			os.Exit(1)
+		}
+		if err := os.Setenv("GOCOVERDIR", dir); err != nil {
+			fmt.Fprintf(os.Stderr, "integration: GOCOVERDIR: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
 	root, err := findRepoRoot()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "integration: find repo root: %v\n", err)
@@ -83,7 +94,12 @@ func buildMuninnBinary(root string) (string, error) {
 		return "", fmt.Errorf("mkdir temp: %w", err)
 	}
 	bin := filepath.Join(dir, "muninn")
-	cmd := exec.Command("go", "build", "-o", bin, ".")
+	buildArgs := []string{"build", "-o", bin}
+	if os.Getenv("GOCOVERDIR") != "" {
+		buildArgs = []string{"build", "-cover", "-coverpkg=./...", "-o", bin}
+	}
+	buildArgs = append(buildArgs, ".")
+	cmd := exec.Command("go", buildArgs...)
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("go build: %w\n%s", err, out)
@@ -186,6 +202,8 @@ func prepareFixtureTarget(t *testing.T) string {
 // initGitRepo creates an initial commit poutine needs for analyze_local.
 func initGitRepo(t *testing.T, dir string) {
 	t.Helper()
+	// Fixture trees may ship with a sample .git; remove it so git add sees files.
+	_ = os.RemoveAll(filepath.Join(dir, ".git"))
 	runGit(t, dir, "init")
 	runGit(t, dir, "config", "user.email", "fixture@test.local")
 	runGit(t, dir, "config", "user.name", "Fixture")
