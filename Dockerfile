@@ -16,7 +16,7 @@
 # `make scanner-checksums` to regenerate them.
 
 # ── tools: download static Go scanner binaries ───────────────────────────────
-FROM alpine:3.24.3 AS tools
+FROM alpine:3.24.4 AS tools
 
 RUN apk add --no-cache curl tar
 
@@ -121,7 +121,7 @@ rm /tmp/trivy.tgz
 EOF
 
 # ── builder: compile Muninn (static, runs on any libc) ───────────────────────
-FROM golang:1.27.2-alpine AS builder
+FROM golang:1.27.3-alpine AS builder
 ARG VERSION=dev
 WORKDIR /src
 COPY go.mod ./
