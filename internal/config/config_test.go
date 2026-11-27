@@ -17,7 +17,7 @@ func TestDefaults(t *testing.T) {
 		t.Errorf("FailOn = %q, want info", cfg.FailOn)
 	}
 
-	wantEnabled := []string{"gitleaks", "semgrep", "zizmor", "actionlint", "poutine", "trivy", "osv-scanner", "checkov"}
+	wantEnabled := []string{"gitleaks", "semgrep", "zizmor", "actionlint", "poutine", "trivy", "osv-scanner", "checkov", "skillspector"}
 	for _, name := range wantEnabled {
 		sc, ok := cfg.Scanners[name]
 		if !ok {

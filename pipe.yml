@@ -1,5 +1,5 @@
 name: Muninn Security Scan
-image: docker://ghcr.io/skaldlab/muninn:0.4.0
+image: docker://ghcr.io/skaldlab/muninn:0.5.0
 description: |
   Run Muninn's multi-scanner security suite in Bitbucket Pipelines.
   Posts an idempotent PR comment and uploads a Code Insights report when

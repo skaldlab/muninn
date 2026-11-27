@@ -15,4 +15,5 @@ func TestConfigure_NoOpScanners(t *testing.T) {
 	NewPoutine().Configure(cfg)
 	NewOSVScanner().Configure(cfg)
 	NewPipelineCheck().Configure(cfg)
+	NewSkillSpector().Configure(cfg)
 }

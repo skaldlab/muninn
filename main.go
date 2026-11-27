@@ -159,6 +159,7 @@ func activeScanners() []scanner.Scanner {
 		scanner.NewOSVScanner(),
 		scanner.NewTrivy(),
 		scanner.NewCheckov(),
+		scanner.NewSkillSpector(),
 	}
 }
 

@@ -517,8 +517,8 @@ func TestCheckFailOn_SuppressedIgnored(t *testing.T) {
 
 func TestActiveScanners_Count(t *testing.T) {
 	scanners := activeScanners()
-	if len(scanners) != 9 {
-		t.Fatalf("activeScanners() returned %d scanners, want 9", len(scanners))
+	if len(scanners) != 10 {
+		t.Fatalf("activeScanners() returned %d scanners, want 10", len(scanners))
 	}
 	// Every scanner must report a non-empty name.
 	for i, sc := range scanners {

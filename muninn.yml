@@ -22,6 +22,8 @@ scanners:
     ignore-unfixed: true
   checkov:
     enabled: true
+  skillspector:
+    enabled: true
 
 suppressions:
   - id: testdata

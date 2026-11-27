@@ -1,12 +1,12 @@
 # Top-level pins for the pip-installed scanners. Renovate keeps these current;
 # requirements-scanners.txt is the hash-locked, multi-arch output compiled from
 # this file (make scanners-lock). Do not edit the .txt by hand.
-semgrep==1.184.0
+semgrep==1.187.0
 # checkov 3.2.532+ and 3.3.x/3.4.x pull ecdsa>=0.19.0,<1.0.0; current ecdsa releases
 # are affected by PYSEC-2026-1325 / CVE-2024-23342 with no fixed release yet.
 # Keep checkov at 3.2.531 until checkov drops/replaces ecdsa or a fixed ecdsa is available.
 checkov==3.2.531
-zizmor==1.32.0
+zizmor==1.33.1
 
 # Security floor for checkov's aiohttp dependency (GHSA-2g87-pp6c-29x5,
 # GHSA-5wr8-gcqf-gqf3 / CVE-2026-111064, GHSA-9xw5-w5jj-pvcg / CVE-2026-111066,
@@ -64,7 +64,7 @@ soupsieve>=4.0.0
 # GHSA-r6x4-923q-g947, GHSA-w2cx-738m-mc7w, GHSA-2gx3-rcp4-g85q,
 # GHSA-42vr-xj54-vc7v, GHSA-8wjv-2p76-3863, GHSA-gvp8-978c-rx2q,
 # GHSA-hxm8-2xgr-2p9m, GHSA-jwrc-g2q2-pq5p, GHSA-w6j9-cwv2-h6wq).
-# semgrep 1.184.0 requires pyjwt[crypto]>=2.15.0,<3.
+# semgrep requires pyjwt[crypto]>=2.15.0,<3.
 pyjwt>=2.15.0
 
 # Security floor for urllib3 (shared scanner transitive): GHSA-8988-9cw3-xx77,
@@ -79,7 +79,7 @@ multidict>=6.9.1
 
 # Security floor for certifi (shared scanner transitive): GHSA-6q48-6c7w-9gw2 /
 # PYSEC-2026-4320 emSign root with compromised intermediate keys. Fixed in
-# 2026.10.18; semgrep 1.184.0 also requires >=2026.10.19.
+# 2026.10.18; semgrep also requires >=2026.10.19.
 certifi>=2026.10.19
 
 # Security floor for semgrep's mcp transitive: GHSA-5h93-6whr-6q8j,
