@@ -123,14 +123,14 @@ rm /tmp/trivy.tgz
 EOF
 
 # ── skillspector: isolated Python 3.13 venv (yara-python has no 3.14 wheels) ─
-# --copies is required: a symlink venv's bin/python points at
+# python -m venv --copies is required: a symlink venv's bin/python points at
 # /usr/local/bin/python3.13, and after COPY into the 3.14 final image Python
 # realpath-resolves the interpreter and misses /opt/skillspector/pyvenv.cfg,
-# producing "No module named 'skillspector'".
+# producing "No module named 'skillspector'". (uv venv has no --copies flag.)
 FROM python:3.13-slim-bookworm AS skillspector
 COPY requirements-skillspector.txt /tmp/requirements-skillspector.txt
 RUN pip install --no-cache-dir uv && \
-    uv venv --copies /opt/skillspector && \
+    python3 -m venv --copies /opt/skillspector && \
     uv pip install --python /opt/skillspector/bin/python --no-cache --require-hashes \
       -r /tmp/requirements-skillspector.txt && \
     rm /tmp/requirements-skillspector.txt && \
@@ -181,8 +181,8 @@ RUN uv venv /opt/pipeline-check && \
     pipeline_check --version
 
 # SkillSpector needs Python 3.13 for prebuilt yara-python wheels. Copy the
-# --copies venv (interpreter lives under /opt/skillspector/bin) plus the 3.13
-# shared library and stdlib that pyvenv.cfg home=/usr/local still references.
+# copied-interpreter venv (under /opt/skillspector/bin) plus the 3.13 shared
+# library and stdlib that pyvenv.cfg home=/usr/local still references.
 COPY --from=skillspector /opt/skillspector /opt/skillspector
 COPY --from=skillspector /usr/local/lib/libpython3.13.so.1.0 /usr/local/lib/libpython3.13.so.1.0
 COPY --from=skillspector /usr/local/lib/python3.13 /usr/local/lib/python3.13
