@@ -284,7 +284,7 @@ func TestSkillSpectorIsCollection_IOError(t *testing.T) {
 	if err := os.WriteFile(path, []byte("not-a-dir"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	ok, err := skillSpectorIsCollection(path)
+	ok, err := skillSpectorIsCollection(context.Background(), path)
 	if err == nil || ok {
 		t.Fatalf("ok=%v err=%v, want error", ok, err)
 	}
@@ -480,9 +480,22 @@ func TestSkillSpectorScanJobs_DiscoveryError(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(target, 0755) })
-	_, err := skillSpectorScanJobs(target)
+	if _, err := os.ReadDir(target); err == nil {
+		t.Skip("chmod 0000 did not deny directory read on this platform")
+	}
+	_, err := skillSpectorScanJobs(context.Background(), target)
 	if err == nil {
 		t.Fatal("expected discovery error")
+	}
+}
+
+func TestSkillSpectorScanJobs_ContextCanceled(t *testing.T) {
+	t.Parallel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	_, err := skillSpectorScanJobs(ctx, t.TempDir())
+	if err == nil || !strings.Contains(err.Error(), "context") {
+		t.Fatalf("skillSpectorScanJobs = %v, want context error", err)
 	}
 }
 
@@ -492,7 +505,7 @@ func TestSkillSpectorScanJobs_EmptyCollection(t *testing.T) {
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		t.Fatal(err)
 	}
-	jobs, err := skillSpectorScanJobs(target)
+	jobs, err := skillSpectorScanJobs(context.Background(), target)
 	if err != nil {
 		t.Fatal(err)
 	}

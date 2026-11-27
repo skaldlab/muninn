@@ -90,7 +90,7 @@ func (s *SkillSpector) Run(ctx context.Context, target string) ([]normalizer.Fin
 	if !s.IsAvailable() {
 		return nil, fmt.Errorf("skillspector: binary not found on PATH")
 	}
-	jobs, err := skillSpectorScanJobs(target)
+	jobs, err := skillSpectorScanJobs(ctx, target)
 	if err != nil {
 		return nil, err
 	}
@@ -113,9 +113,12 @@ type skillSpectorJob struct {
 	recursive bool
 }
 
-func skillSpectorScanJobs(target string) ([]skillSpectorJob, error) {
+func skillSpectorScanJobs(ctx context.Context, target string) ([]skillSpectorJob, error) {
+	if err := skillSpectorCtxErr(ctx); err != nil {
+		return nil, err
+	}
 	var jobs []skillSpectorJob
-	hasRoot, err := skillSpectorHasManifest(target)
+	hasRoot, err := skillSpectorHasManifest(ctx, target)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +126,11 @@ func skillSpectorScanJobs(target string) ([]skillSpectorJob, error) {
 		jobs = append(jobs, skillSpectorJob{path: target, recursive: false})
 	}
 	for _, rel := range skillSpectorCollectionDirs {
+		if err := skillSpectorCtxErr(ctx); err != nil {
+			return nil, err
+		}
 		dir := filepath.Join(target, filepath.FromSlash(rel))
-		ok, err := skillSpectorIsCollection(dir)
+		ok, err := skillSpectorIsCollection(ctx, dir)
 		if err != nil {
 			return nil, err
 		}
@@ -135,8 +141,23 @@ func skillSpectorScanJobs(target string) ([]skillSpectorJob, error) {
 	return jobs, nil
 }
 
-func skillSpectorHasManifest(dir string) (bool, error) {
-	for _, name := range []string{"SKILL.md", "skill.md"} {
+func skillSpectorCtxErr(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return fmt.Errorf("skillspector: %w", err)
+	}
+	return nil
+}
+
+func skillSpectorHasManifest(ctx context.Context, dir string) (bool, error) {
+	if err := skillSpectorCtxErr(ctx); err != nil {
+		return false, err
+	}
+	for i, name := range []string{"SKILL.md", "skill.md"} {
+		if i > 0 {
+			if err := skillSpectorCtxErr(ctx); err != nil {
+				return false, err
+			}
+		}
 		path := filepath.Join(dir, name)
 		_, err := os.Stat(path)
 		if err == nil {
@@ -149,7 +170,10 @@ func skillSpectorHasManifest(dir string) (bool, error) {
 	return false, nil
 }
 
-func skillSpectorIsCollection(dir string) (bool, error) {
+func skillSpectorIsCollection(ctx context.Context, dir string) (bool, error) {
+	if err := skillSpectorCtxErr(ctx); err != nil {
+		return false, err
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -161,7 +185,10 @@ func skillSpectorIsCollection(dir string) (bool, error) {
 		if !e.IsDir() {
 			continue
 		}
-		ok, err := skillSpectorHasManifest(filepath.Join(dir, e.Name()))
+		if err := skillSpectorCtxErr(ctx); err != nil {
+			return false, err
+		}
+		ok, err := skillSpectorHasManifest(ctx, filepath.Join(dir, e.Name()))
 		if err != nil {
 			return false, err
 		}

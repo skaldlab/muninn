@@ -95,3 +95,6 @@ mcp>=1.30.0
 # requirements-scanners.overrides forces the patched OpenTelemetry stack;
 # this floor keeps the lock from drifting back.
 opentelemetry-api>=1.45.1
+
+# wcmatch>=11.2.0 (GHSA-53pm-wgxf-c6qf) is enforced in
+# requirements-scanners.overrides because semgrep still pins wcmatch<9.

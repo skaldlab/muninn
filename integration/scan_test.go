@@ -96,7 +96,7 @@ func buildMuninnBinary(root string) (string, error) {
 	bin := filepath.Join(dir, "muninn")
 	buildArgs := []string{"build", "-o", bin}
 	if os.Getenv("GOCOVERDIR") != "" {
-		buildArgs = []string{"build", "-cover", "-coverpkg=./...", "-o", bin}
+		buildArgs = []string{"build", "-cover", "-covermode=atomic", "-coverpkg=./...", "-o", bin}
 	}
 	buildArgs = append(buildArgs, ".")
 	cmd := exec.Command("go", buildArgs...)

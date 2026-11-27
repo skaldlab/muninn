@@ -56,3 +56,9 @@ opentelemetry-exporter-http-transport==0.66b2 \
 opentelemetry-exporter-otlp-common==0.66b2 \
     --hash=sha256:06f5a9b88638e310efa1f1d206cdf6b75393e112aba4e174a963416192bd1028 \
     --hash=sha256:ace86efb75489f925f1ef809856ae5f0c7db534e4afdc624530222228b1236a5
+
+# semgrep still requires wcmatch>=8.3,<9.dev0. Versions before 11.2.0 are
+# affected by GHSA-53pm-wgxf-c6qf (CVE-2026-132276). Force the patched line
+# until semgrep loosens its pin.
+wcmatch==11.2.0 \
+    --hash=sha256:952bab83c75c233836007a69550a3a8753cf06964c1eb3b84ff11ad5bff1c272

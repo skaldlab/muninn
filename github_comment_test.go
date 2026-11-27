@@ -274,7 +274,10 @@ func TestRenderComment(t *testing.T) {
 }
 
 func TestPostPRCommentHTTP_ListCommentsError(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	var gotMethod, gotPath string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
 		w.WriteHeader(http.StatusForbidden)
 		_, _ = w.Write([]byte("nope"))
 	}))
@@ -292,5 +295,11 @@ func TestPostPRCommentHTTP_ListCommentsError(t *testing.T) {
 
 	if err := postPRCommentHTTP(context.Background(), "hi", srv.Client()); err != nil {
 		t.Fatalf("postPRCommentHTTP() = %v, want nil (warning only)", err)
+	}
+	if gotMethod != http.MethodGet {
+		t.Errorf("method = %q, want GET", gotMethod)
+	}
+	if gotPath != "/repos/skaldlab/muninn/issues/3/comments" {
+		t.Errorf("path = %q, want /repos/skaldlab/muninn/issues/3/comments", gotPath)
 	}
 }
