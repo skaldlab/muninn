@@ -115,8 +115,9 @@ func TestSkillSpectorRun_WithFindings(t *testing.T) {
 	if f0.Severity != normalizer.SeverityHigh {
 		t.Errorf("Severity = %q, want high", f0.Severity)
 	}
-	if f0.File != "scripts/sync.py" {
-		t.Errorf("File = %q, want scripts/sync.py", f0.File)
+	wantFile := ".claude/skills/suspicious-sync/scripts/sync.py"
+	if f0.File != wantFile {
+		t.Errorf("File = %q, want %s", f0.File, wantFile)
 	}
 	if f0.Line != 23 {
 		t.Errorf("Line = %d, want 23", f0.Line)
@@ -203,7 +204,7 @@ func TestParseSkillSpectorJSON_Empty(t *testing.T) {
 }
 
 func TestNormalizeSkillSpector_Nil(t *testing.T) {
-	if got := normalizeSkillSpector(nil); got != nil {
+	if got := normalizeSkillSpector(nil, "/repo", "/repo"); got != nil {
 		t.Errorf("normalizeSkillSpector(nil) = %v, want nil", got)
 	}
 }
@@ -211,6 +212,7 @@ func TestNormalizeSkillSpector_Nil(t *testing.T) {
 func TestNormalizeSkillSpector_RecursiveSkills(t *testing.T) {
 	doc := &skillSpectorReport{
 		Skills: []skillSpectorReport{{
+			Skill: &skillSpectorMeta{Name: "demo", Source: "demo"},
 			Issues: []skillSpectorIssue{{
 				FindingID:   "P1",
 				Pattern:     "Instruction Override",
@@ -220,12 +222,69 @@ func TestNormalizeSkillSpector_RecursiveSkills(t *testing.T) {
 			}},
 		}},
 	}
-	got := normalizeSkillSpector(doc)
+	got := normalizeSkillSpector(doc, "/repo", "/repo/.claude/skills")
 	if len(got) != 1 {
 		t.Fatalf("got %d findings, want 1", len(got))
 	}
-	if got[0].RuleID != "P1" || got[0].File != "SKILL.md" {
+	if got[0].RuleID != "P1" || got[0].File != ".claude/skills/demo/SKILL.md" {
 		t.Errorf("finding = %+v", got[0])
+	}
+}
+
+func TestNormalizeSkillSpector_RootManifestKeepsRelPath(t *testing.T) {
+	doc := &skillSpectorReport{
+		Skill: &skillSpectorMeta{Name: "root", Source: "."},
+		Issues: []skillSpectorIssue{{
+			FindingID: "E2",
+			Severity:  "HIGH",
+			Location:  skillSpectorLocation{File: "scripts/sync.py", StartLine: 1},
+		}},
+	}
+	got := normalizeSkillSpector(doc, "/repo", "/repo")
+	if len(got) != 1 || got[0].File != "scripts/sync.py" {
+		t.Fatalf("finding = %+v, want scripts/sync.py", got)
+	}
+}
+
+func TestSkillSpectorRun_PreservesFindingsOnLaterJobError(t *testing.T) {
+	target := t.TempDir()
+	writeSkillSpectorStub(t, target, ".claude/skills/one")
+	if err := os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("# root\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	calls := 0
+	s := &SkillSpector{
+		lookPath: lookPathSkillSpector(),
+		execFunc: func(ctx context.Context, name string, args ...string) *exec.Cmd {
+			calls++
+			if calls == 1 {
+				payload := `{"issues":[{"finding_id":"E2","severity":"high","location":{"file":"a.py","start_line":1}}]}`
+				return fakeSkillSpectorExecFunc(payload, 0)(ctx, name, args...)
+			}
+			return fakeSkillSpectorExecFunc(`{"issues":[]}`, 2)(ctx, name, args...)
+		},
+	}
+	got, err := s.Run(context.Background(), target)
+	if err == nil {
+		t.Fatal("expected error from second job")
+	}
+	if len(got) != 1 || got[0].RuleID != "E2" {
+		t.Fatalf("partial findings = %+v, want one E2 finding", got)
+	}
+}
+
+func TestSkillSpectorIsCollection_IOError(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "skills")
+	if err := os.WriteFile(path, []byte("not-a-dir"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	ok, err := skillSpectorIsCollection(path)
+	if err == nil || ok {
+		t.Fatalf("ok=%v err=%v, want error", ok, err)
+	}
+	if !strings.Contains(err.Error(), path) {
+		t.Errorf("error %v missing path", err)
 	}
 }
 
@@ -321,9 +380,13 @@ func TestNormalizeOneSkillSpector_StableIdentity(t *testing.T) {
 		Surface:     "code",
 		Confidence:  0.9,
 	}
-	f := normalizeOneSkillSpector(issue)
+	base := "/repo/.claude/skills/suspicious-sync"
+	f := normalizeOneSkillSpector(issue, "/repo", base)
 	if f.Tool != "skillspector" || f.RuleID != "E2" || f.Severity != normalizer.SeverityHigh {
 		t.Errorf("finding = %+v", f)
+	}
+	if f.File != ".claude/skills/suspicious-sync/scripts/sync.py" {
+		t.Errorf("File = %q", f.File)
 	}
 	if f.ID == "" || f.ID != f.Fingerprint {
 		t.Errorf("invalid identity: %+v", f)
@@ -334,17 +397,17 @@ func TestNormalizeOneSkillSpector_StableIdentity(t *testing.T) {
 	moved := issue
 	moved.Explanation = "updated"
 	moved.Pattern = "Updated title"
-	if normalizeOneSkillSpector(moved).Fingerprint != f.Fingerprint {
+	if normalizeOneSkillSpector(moved, "/repo", base).Fingerprint != f.Fingerprint {
 		t.Error("wording changed finding identity")
 	}
 	moved.FindingID = "E1"
-	if normalizeOneSkillSpector(moved).Fingerprint == f.Fingerprint {
+	if normalizeOneSkillSpector(moved, "/repo", base).Fingerprint == f.Fingerprint {
 		t.Error("different rules share an identity")
 	}
 	issue.FindingID = ""
 	issue.ID = "fallback-id"
 	issue.Pattern = ""
-	fb := normalizeOneSkillSpector(issue)
+	fb := normalizeOneSkillSpector(issue, "/repo", base)
 	if fb.RuleID != "fallback-id" || fb.Title != "fallback-id" {
 		t.Errorf("fallback identity = %+v", fb)
 	}

@@ -23,7 +23,8 @@ type Scanner interface {
 	// Run executes the scanner against target (a filesystem path) and returns
 	// all findings normalized to the common schema. Callers should treat a
 	// non-nil error as a scanner execution failure, not a "findings found"
-	// signal — presence of findings is indicated by a non-empty slice.
+	// signal — presence of findings is indicated by a non-empty slice. A
+	// non-nil error may still be accompanied by partial findings.
 	Run(ctx context.Context, target string) ([]normalizer.Finding, error)
 
 	// IsAvailable reports whether the scanner binary is present and executable

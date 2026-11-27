@@ -555,6 +555,26 @@ func TestRunScanner_EnabledRuns(t *testing.T) {
 	}
 }
 
+type partialFailScanner struct{}
+
+func (partialFailScanner) Name() string                   { return "partial-fail" }
+func (partialFailScanner) IsAvailable() bool              { return true }
+func (partialFailScanner) Configure(config.ScannerConfig) {}
+func (partialFailScanner) Run(context.Context, string) ([]normalizer.Finding, error) {
+	return []normalizer.Finding{{
+		Tool: "partial-fail", RuleID: "R1", Severity: normalizer.SeverityHigh, Fingerprint: "fp",
+	}}, fmt.Errorf("boom")
+}
+
+func TestRunScanner_KeepsPartialFindingsOnError(t *testing.T) {
+	cfg := config.Defaults()
+	cfg.Scanners["partial-fail"] = config.ScannerConfig{Enabled: true}
+	got := runScanner(context.Background(), partialFailScanner{}, t.TempDir(), cfg)
+	if len(got) != 1 || got[0].RuleID != "R1" {
+		t.Fatalf("runScanner = %+v, want partial R1 finding", got)
+	}
+}
+
 // ── applySuppressions ─────────────────────────────────────────────────────────
 
 func TestApplySuppressions_MatchingPathID(t *testing.T) {

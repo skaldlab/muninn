@@ -25,8 +25,15 @@ var skillSpectorCollectionDirs = []string{
 
 // skillSpectorReport mirrors `skillspector scan --format json` output.
 type skillSpectorReport struct {
+	Skill  *skillSpectorMeta    `json:"skill"`
 	Issues []skillSpectorIssue  `json:"issues"`
 	Skills []skillSpectorReport `json:"skills"`
+}
+
+// skillSpectorMeta is the skill identity block on a JSON report.
+type skillSpectorMeta struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
 }
 
 // skillSpectorIssue is one finding in a SkillSpector JSON report.
@@ -77,22 +84,26 @@ func (s *SkillSpector) IsAvailable() bool {
 // Configure implements Scanner. SkillSpector has no configurable options.
 func (s *SkillSpector) Configure(_ config.ScannerConfig) {}
 
-// Run implements Scanner. Repos without agent skills are a no-op.
+// Run implements Scanner. Repos without agent skills are a no-op. When a later
+// job fails, findings from completed jobs are still returned with the error.
 func (s *SkillSpector) Run(ctx context.Context, target string) ([]normalizer.Finding, error) {
 	if !s.IsAvailable() {
 		return nil, fmt.Errorf("skillspector: binary not found on PATH")
 	}
-	jobs := skillSpectorScanJobs(target)
+	jobs, err := skillSpectorScanJobs(target)
+	if err != nil {
+		return nil, err
+	}
 	if len(jobs) == 0 {
 		return nil, nil
 	}
 	var all []normalizer.Finding
 	for _, job := range jobs {
-		findings, err := s.scanJob(ctx, job)
-		if err != nil {
-			return nil, err
-		}
+		findings, jobErr := s.scanJob(ctx, target, job)
 		all = append(all, findings...)
+		if jobErr != nil {
+			return all, jobErr
+		}
 	}
 	return all, nil
 }
@@ -102,49 +113,71 @@ type skillSpectorJob struct {
 	recursive bool
 }
 
-func skillSpectorScanJobs(target string) []skillSpectorJob {
+func skillSpectorScanJobs(target string) ([]skillSpectorJob, error) {
 	var jobs []skillSpectorJob
-	if skillSpectorHasManifest(target) {
+	hasRoot, err := skillSpectorHasManifest(target)
+	if err != nil {
+		return nil, err
+	}
+	if hasRoot {
 		jobs = append(jobs, skillSpectorJob{path: target, recursive: false})
 	}
 	for _, rel := range skillSpectorCollectionDirs {
 		dir := filepath.Join(target, filepath.FromSlash(rel))
-		if !skillSpectorIsCollection(dir) {
-			continue
+		ok, err := skillSpectorIsCollection(dir)
+		if err != nil {
+			return nil, err
 		}
-		jobs = append(jobs, skillSpectorJob{path: dir, recursive: true})
+		if ok {
+			jobs = append(jobs, skillSpectorJob{path: dir, recursive: true})
+		}
 	}
-	return jobs
+	return jobs, nil
 }
 
-func skillSpectorHasManifest(dir string) bool {
+func skillSpectorHasManifest(dir string) (bool, error) {
 	for _, name := range []string{"SKILL.md", "skill.md"} {
-		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
-			return true
+		path := filepath.Join(dir, name)
+		_, err := os.Stat(path)
+		if err == nil {
+			return true, nil
+		}
+		if !os.IsNotExist(err) {
+			return false, fmt.Errorf("skillspector: checking %s: %w", path, err)
 		}
 	}
-	return false
+	return false, nil
 }
 
-func skillSpectorIsCollection(dir string) bool {
+func skillSpectorIsCollection(dir string) (bool, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
-		return false
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("skillspector: reading %s: %w", dir, err)
 	}
 	for _, e := range entries {
-		if e.IsDir() && skillSpectorHasManifest(filepath.Join(dir, e.Name())) {
-			return true
+		if !e.IsDir() {
+			continue
+		}
+		ok, err := skillSpectorHasManifest(filepath.Join(dir, e.Name()))
+		if err != nil {
+			return false, err
+		}
+		if ok {
+			return true, nil
 		}
 	}
-	return false
+	return false, nil
 }
 
-func (s *SkillSpector) scanJob(ctx context.Context, job skillSpectorJob) ([]normalizer.Finding, error) {
+func (s *SkillSpector) scanJob(ctx context.Context, target string, job skillSpectorJob) ([]normalizer.Finding, error) {
 	doc, err := s.execute(ctx, job)
 	if err != nil {
 		return nil, err
 	}
-	return normalizeSkillSpector(doc), nil
+	return normalizeSkillSpector(doc, target, job.path), nil
 }
 
 func (s *SkillSpector) execute(ctx context.Context, job skillSpectorJob) (*skillSpectorReport, error) {
@@ -174,38 +207,84 @@ func parseSkillSpectorJSON(data []byte) (*skillSpectorReport, error) {
 	return &doc, nil
 }
 
-func normalizeSkillSpector(doc *skillSpectorReport) []normalizer.Finding {
+func normalizeSkillSpector(doc *skillSpectorReport, target, jobPath string) []normalizer.Finding {
+	return normalizeSkillSpectorNode(doc, target, jobPath, jobPath)
+}
+
+func normalizeSkillSpectorNode(doc *skillSpectorReport, target, jobPath, skillDir string) []normalizer.Finding {
 	if doc == nil {
 		return nil
 	}
-	issues := skillSpectorCollectIssues(doc)
-	out := make([]normalizer.Finding, 0, len(issues))
-	for _, issue := range issues {
-		out = append(out, normalizeOneSkillSpector(issue))
+	base := skillDir
+	if doc.Skill != nil && doc.Skill.Source != "" {
+		base = skillSpectorResolveSource(target, jobPath, doc.Skill.Source)
 	}
-	return out
-}
-
-func skillSpectorCollectIssues(doc *skillSpectorReport) []skillSpectorIssue {
-	out := append([]skillSpectorIssue{}, doc.Issues...)
+	out := make([]normalizer.Finding, 0, len(doc.Issues))
+	for _, issue := range doc.Issues {
+		out = append(out, normalizeOneSkillSpector(issue, target, base))
+	}
 	for i := range doc.Skills {
-		out = append(out, skillSpectorCollectIssues(&doc.Skills[i])...)
+		out = append(out, normalizeSkillSpectorNode(&doc.Skills[i], target, jobPath, base)...)
 	}
 	return out
 }
 
-func normalizeOneSkillSpector(issue skillSpectorIssue) normalizer.Finding {
+func skillSpectorResolveSource(target, jobPath, source string) string {
+	source = filepath.Clean(filepath.FromSlash(source))
+	if filepath.IsAbs(source) {
+		return source
+	}
+	source = strings.TrimPrefix(source, "."+string(filepath.Separator))
+	if strings.ContainsRune(source, filepath.Separator) {
+		return filepath.Join(target, source)
+	}
+	return filepath.Join(jobPath, source)
+}
+
+func skillSpectorRelFile(target, base, file string) string {
+	file = filepath.Clean(filepath.FromSlash(file))
+	if file == "." || file == "" {
+		return ""
+	}
+	abs := file
+	if !filepath.IsAbs(file) {
+		abs = filepath.Join(base, file)
+	}
+	rel, err := filepath.Rel(filepath.Clean(target), abs)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return filepath.ToSlash(file)
+	}
+	return filepath.ToSlash(rel)
+}
+
+func normalizeOneSkillSpector(issue skillSpectorIssue, target, base string) normalizer.Finding {
 	ruleID := issue.FindingID
 	if ruleID == "" {
 		ruleID = issue.ID
 	}
-	file := filepath.ToSlash(issue.Location.File)
+	file := skillSpectorRelFile(target, base, issue.Location.File)
 	title := issue.Pattern
 	if title == "" {
 		title = ruleID
 	}
-	desc := skillSpectorDescription(issue)
 	fp := skillSpectorFingerprint(file, ruleID, issue.Location.StartLine)
+	f := normalizer.Finding{
+		ID:          fp,
+		Tool:        "skillspector",
+		Severity:    skillSpectorSeverity(issue.Severity),
+		Title:       title,
+		Description: skillSpectorDescription(issue),
+		File:        file,
+		Line:        issue.Location.StartLine,
+		RuleID:      ruleID,
+		RuleURL:     "https://github.com/NVIDIA/SkillSpector",
+		Fingerprint: fp,
+		Metadata:    skillSpectorMetadata(issue),
+	}
+	return f
+}
+
+func skillSpectorMetadata(issue skillSpectorIssue) map[string]any {
 	meta := map[string]any{}
 	if issue.Category != "" {
 		meta["category"] = issue.Category
@@ -216,22 +295,10 @@ func normalizeOneSkillSpector(issue skillSpectorIssue) normalizer.Finding {
 	if issue.Confidence > 0 {
 		meta["confidence"] = issue.Confidence
 	}
-	f := normalizer.Finding{
-		ID:          fp,
-		Tool:        "skillspector",
-		Severity:    skillSpectorSeverity(issue.Severity),
-		Title:       title,
-		Description: desc,
-		File:        file,
-		Line:        issue.Location.StartLine,
-		RuleID:      ruleID,
-		RuleURL:     "https://github.com/NVIDIA/SkillSpector",
-		Fingerprint: fp,
+	if len(meta) == 0 {
+		return nil
 	}
-	if len(meta) > 0 {
-		f.Metadata = meta
-	}
-	return f
+	return meta
 }
 
 func skillSpectorDescription(issue skillSpectorIssue) string {
